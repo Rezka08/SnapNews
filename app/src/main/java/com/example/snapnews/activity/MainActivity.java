@@ -11,9 +11,12 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+
+import com.example.snapnews.activity.DetailActivity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.snapnews.R;
 import com.snapnews.databinding.ActivityMainBinding;
+import com.snapnews.utils.ApiKeyManager;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
@@ -28,6 +31,9 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
+        // Validate API key configuration
+        validateApiKeyConfiguration();
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -35,6 +41,24 @@ public class MainActivity extends AppCompatActivity {
 
         setupBottomNavigation();
         setupSharedPreferences();
+    }
+
+    private void validateApiKeyConfiguration() {
+        try {
+            if (!ApiKeyManager.isApiKeyConfigured()) {
+                throw new IllegalStateException("API Key not configured");
+            }
+        } catch (Exception e) {
+            // Show error dialog and exit
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Configuration Error")
+                    .setMessage("NEWS_API_KEY not found!\n\n" +
+                            "Please add it to local.properties file:\n" +
+                            "NEWS_API_KEY=your_actual_api_key_here")
+                    .setPositiveButton("OK", (dialog, which) -> finish())
+                    .setCancelable(false)
+                    .show();
+        }
     }
 
     private void initializeTheme() {
