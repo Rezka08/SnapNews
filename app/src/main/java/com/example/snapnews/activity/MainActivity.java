@@ -1,6 +1,7 @@
 package com.example.snapnews.activity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
@@ -13,10 +14,11 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.example.snapnews.activity.DetailActivity;
+import com.example.snapnews.models.Article;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.snapnews.R;
-import com.snapnews.databinding.ActivityMainBinding;
-import com.snapnews.utils.ApiKeyManager;
+import com.example.snapnews.R;
+import com.example.snapnews.databinding.ActivityMainBinding;
+import com.example.snapnews.utils.ApiKeyManager;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
