@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.bumptech.glide.Glide;
@@ -31,6 +32,8 @@ public class DetailActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private Handler mainHandler;
     private boolean isDestroyed = false;
+    private boolean isFavorite = false;
+    private ImageView btnFavorite;
 
     public static final String EXTRA_ARTICLE_TITLE = "extra_article_title";
     public static final String EXTRA_ARTICLE_DESCRIPTION = "extra_article_description";
@@ -55,6 +58,8 @@ public class DetailActivity extends AppCompatActivity {
             getArticleFromIntent();
             setupUI();
             setupButtons();
+            setupFavoriteButton();
+            checkFavoriteStatus();
 
             Log.d(TAG, "DetailActivity created successfully");
         } catch (Exception e) {
@@ -88,6 +93,95 @@ public class DetailActivity extends AppCompatActivity {
             Log.d(TAG, "Article data loaded: " + article.getTitle());
         } catch (Exception e) {
             Log.e(TAG, "Error getting article from intent: " + e.getMessage(), e);
+        }
+    }
+
+    private void setupFavoriteButton() {
+        try {
+            btnFavorite = binding.toolbar.findViewById(R.id.btn_favorite);
+            if (btnFavorite != null) {
+                btnFavorite.setOnClickListener(v -> toggleFavorite());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up favorite button: " + e.getMessage(), e);
+        }
+    }
+
+    private void checkFavoriteStatus() {
+        if (article == null || article.getUrl() == null) return;
+
+        executorService.execute(() -> {
+            try {
+                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+                boolean currentFavoriteStatus = existingArticle != null && existingArticle.isFavorite();
+
+                mainHandler.post(() -> {
+                    isFavorite = currentFavoriteStatus;
+                    updateFavoriteIcon();
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking favorite status: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private void toggleFavorite() {
+        if (article == null || article.getUrl() == null) {
+            Toast.makeText(this, "Cannot save this article", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Toggle status immediately for UI responsiveness
+        isFavorite = !isFavorite;
+        updateFavoriteIcon();
+
+        // Update database in background
+        executorService.execute(() -> {
+            try {
+                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+
+                if (existingArticle != null) {
+                    // Update existing article
+                    existingArticle.setFavorite(isFavorite);
+                    articleDao.updateArticle(existingArticle);
+                } else if (isFavorite) {
+                    // Insert new article as favorite
+                    article.setFavorite(true);
+                    article.setTimestamp(System.currentTimeMillis());
+                    articleDao.insertArticle(article);
+                }
+
+                mainHandler.post(() -> {
+                    String message = isFavorite ? "Added to favorites" : "Removed from favorites";
+                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
+                });
+
+                Log.d(TAG, "Favorite status updated: " + isFavorite);
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating favorite: " + e.getMessage(), e);
+
+                // Revert UI change if database update failed
+                mainHandler.post(() -> {
+                    isFavorite = !isFavorite;
+                    updateFavoriteIcon();
+                    Toast.makeText(DetailActivity.this, "Failed to update favorite", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void updateFavoriteIcon() {
+        try {
+            if (btnFavorite != null) {
+                int iconRes = isFavorite ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border;
+                btnFavorite.setImageResource(iconRes);
+
+                // Add animation
+                btnFavorite.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100)
+                        .withEndAction(() -> btnFavorite.animate().scaleX(1f).scaleY(1f).setDuration(100));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating favorite icon: " + e.getMessage(), e);
         }
     }
 
@@ -396,60 +490,6 @@ public class DetailActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Failed to copy URL: " + e.getMessage());
             Toast.makeText(this, "Unable to open browser or copy URL", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    // Alternative: In-app browser using WebView
-    private void openInAppBrowser() {
-        try {
-            if (article.getUrl() == null || article.getUrl().isEmpty()) {
-                Toast.makeText(this, "No URL available", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Create simple in-app browser dialog
-            showInAppBrowserDialog(article.getUrl());
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error opening in-app browser: " + e.getMessage(), e);
-            Toast.makeText(this, "Unable to load page", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void showInAppBrowserDialog(String url) {
-        try {
-            // Create dialog with WebView
-            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-
-            // Create WebView
-            WebView webView = new WebView(this);
-            webView.getSettings().setJavaScriptEnabled(true);
-            webView.getSettings().setDomStorageEnabled(true);
-            webView.loadUrl(url);
-
-            builder.setView(webView);
-            builder.setTitle("Article");
-            builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
-            builder.setNeutralButton("Copy URL", (dialog, which) -> {
-                copyUrlToClipboard(url);
-                dialog.dismiss();
-            });
-
-            android.app.AlertDialog dialog = builder.create();
-            dialog.show();
-
-            // Make dialog larger
-            android.view.WindowManager.LayoutParams layoutParams =
-                    dialog.getWindow().getAttributes();
-            layoutParams.width = android.view.WindowManager.LayoutParams.MATCH_PARENT;
-            layoutParams.height = (int) (getResources().getDisplayMetrics().heightPixels * 0.8);
-            dialog.getWindow().setAttributes(layoutParams);
-
-            Log.d(TAG, "In-app browser dialog shown");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error creating in-app browser dialog: " + e.getMessage());
-            copyUrlToClipboard(url);
         }
     }
 
