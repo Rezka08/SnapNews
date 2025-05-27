@@ -1,6 +1,6 @@
 package com.example.snapnews.network;
 
-import com.example.snapnews.model.NewsResponse;
+import com.example.snapnews.models.NewsResponse;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
