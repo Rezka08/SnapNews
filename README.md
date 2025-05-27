@@ -246,15 +246,14 @@ CREATE TABLE articles (
 ## 📝 Credits & Attribution
 
 ### Developer
-**Nama**: [Your Name]  
-**NIM**: [Your Student ID]  
-**Program**: Lab Mobile 2025  
+**Nama**: Rezka Wildan Nurhadi Bakri
+**NIM**: H071231030  
+**Praktikum**: Lab Pemrograman Mobile 2025 
 **Tema**: Berita & Informasi  
 
 ### Third-Party Libraries
 - **Retrofit2**: HTTP client untuk API calls
 - **Glide**: Image loading dan caching
-- **Room**: Local database ORM
 - **Material Components**: UI components
 - **Navigation Component**: Fragment navigation
 
@@ -286,8 +285,8 @@ Project ini dibuat untuk keperluan akademik Lab Mobile 2025. Penggunaan NewsAPI 
 ## 📞 Support
 
 Untuk pertanyaan atau dukungan teknis:
-- **Email**: [your.email@student.ac.id]
-- **GitHub Issues**: [Repository Issues Page]
+- **Email**: rreska9@gmail.com
+- **GitHub Issues**: News Android App
 
 ---
 
