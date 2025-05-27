@@ -1,3 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SnapNews</string>
+    <string name="home">Home</string>
+    <string name="search">Search</string>
+    <string name="favorites">Favorites</string>
+    <string name="categories">Categories</string>
+    <string name="latest">Latest</string>
+    <string name="indonesia">Indonesia</string>
+    <string name="entertainment">Entertainment</string>
+    <string name="sports">Sports</string>
+    <string name="economics">Economics</string>
+    <string name="politics">Politics</string>
+    <string name="loading_news">Loading news...</string>
+    <string name="showing_news">Showing %s news</string>
+
+    <!-- Detail Activity -->
+    <string name="article_image">Article image</string>
+    <string name="share_article">Share article</string>
+    <string name="open_in_browser">Open in browser</string>
+    <string name="favorite_icon">Favorite icon</string>
+    <string name="news_image">News image</string>
+
+    <!-- Error messages -->
+    <string name="error_title">Something went wrong</string>
+    <string name="error_message">Please try again</string>
+    <string name="error_icon">Error icon</string>
+    <string name="retry">Retry</string>
+
+    <!-- Search -->
+    <string name="search_news">Search news...</string>
+    <string name="search_for_news">Search for News</string>
+    <string name="search_description">Find the latest news on any topic</string>
+    <string name="search_icon">Search icon</string>
+    <string name="no_results">No Results Found</string>
+    <string name="try_different_keywords">Try searching with different keywords</string>
+    <string name="no_results_icon">No results icon</string>
+
+    <!-- Favorites -->
+    <string name="no_favorites">No Favorites Yet</string>
+    <string name="add_favorites_description">Save articles to read later by tapping the heart icon</string>
+    <string name="no_favorites_icon">No favorites icon</string>
 </resources>

@@ -1,7 +1,16 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.SnapNews" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SnapNews" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/primary_color_dark</item>
+        <item name="colorPrimaryDark">@color/primary_dark_color</item>
+        <item name="colorAccent">@color/secondary_color</item>
+        <item name="android:colorBackground">@color/background_color_dark</item>
+        <item name="colorSurface">@color/surface_color_dark</item>
+        <item name="colorOnSurface">@color/on_surface_dark</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorError">@color/error_color</item>
+        <item name="android:statusBarColor">@color/primary_color_dark</item>
+        <item name="android:navigationBarColor">@color/surface_color_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
