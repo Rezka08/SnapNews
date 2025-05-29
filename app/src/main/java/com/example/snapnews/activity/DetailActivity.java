@@ -9,18 +9,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.bumptech.glide.Glide;
 import com.example.snapnews.R;
 import com.example.snapnews.database.ArticleDao;
-import com.example.snapnews.database.NewsDatabase;
+import com.example.snapnews.database.NewsDatabaseHelper;
 import com.example.snapnews.databinding.ActivityDetailBinding;
 import com.example.snapnews.models.Article;
+import com.example.snapnews.models.Source;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -28,13 +30,15 @@ public class DetailActivity extends AppCompatActivity {
     private static final String TAG = "DetailActivity";
     private ActivityDetailBinding binding;
     private Article article;
+
+    // PERUBAHAN: Tambah database components untuk favorite functionality
     private ArticleDao articleDao;
+    private NewsDatabaseHelper dbHelper;
     private ExecutorService executorService;
     private Handler mainHandler;
     private boolean isDestroyed = false;
-    private boolean isFavorite = false;
-    private ImageView btnFavorite;
 
+    // Intent extras constants
     public static final String EXTRA_ARTICLE_TITLE = "extra_article_title";
     public static final String EXTRA_ARTICLE_DESCRIPTION = "extra_article_description";
     public static final String EXTRA_ARTICLE_URL = "extra_article_url";
@@ -50,7 +54,7 @@ public class DetailActivity extends AppCompatActivity {
 
         try {
             binding = ActivityDetailBinding.inflate(getLayoutInflater());
-            setContentView(binding.getRoot());
+            super.setContentView(binding.getRoot());
 
             // Initialize components
             mainHandler = new Handler(Looper.getMainLooper());
@@ -58,8 +62,9 @@ public class DetailActivity extends AppCompatActivity {
             getArticleFromIntent();
             setupUI();
             setupButtons();
-            setupFavoriteButton();
-            checkFavoriteStatus();
+
+            // Load favorite status from database
+            loadFavoriteStatus();
 
             Log.d(TAG, "DetailActivity created successfully");
         } catch (Exception e) {
@@ -70,9 +75,11 @@ public class DetailActivity extends AppCompatActivity {
 
     private void initializeDatabase() {
         try {
-            NewsDatabase database = NewsDatabase.getDatabase(this);
-            articleDao = database.articleDao();
+            // PERUBAHAN: Initialize SQLite database
+            dbHelper = NewsDatabaseHelper.getInstance(this);
+            articleDao = new ArticleDao(dbHelper);
             executorService = Executors.newSingleThreadExecutor();
+            Log.d(TAG, "Database initialized successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error initializing database: " + e.getMessage(), e);
         }
@@ -90,105 +97,60 @@ public class DetailActivity extends AppCompatActivity {
             article.setContent(intent.getStringExtra(EXTRA_ARTICLE_CONTENT));
             article.setAuthor(intent.getStringExtra(EXTRA_ARTICLE_AUTHOR));
 
+            // Handle source
+            String sourceName = intent.getStringExtra(EXTRA_ARTICLE_SOURCE);
+            if (sourceName != null) {
+                article.setSource(new Source(null, sourceName));
+            }
+
+            // Set timestamp if not set
+            if (article.getTimestamp() == 0) {
+                article.setTimestamp(System.currentTimeMillis());
+            }
+
             Log.d(TAG, "Article data loaded: " + article.getTitle());
         } catch (Exception e) {
             Log.e(TAG, "Error getting article from intent: " + e.getMessage(), e);
         }
     }
 
-    private void setupFavoriteButton() {
-        try {
-            btnFavorite = binding.toolbar.findViewById(R.id.btn_favorite);
-            if (btnFavorite != null) {
-                btnFavorite.setOnClickListener(v -> toggleFavorite());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting up favorite button: " + e.getMessage(), e);
-        }
-    }
-
-    private void checkFavoriteStatus() {
+    private void loadFavoriteStatus() {
         if (article == null || article.getUrl() == null) return;
 
         executorService.execute(() -> {
             try {
-                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
-                boolean currentFavoriteStatus = existingArticle != null && existingArticle.isFavorite();
-
-                mainHandler.post(() -> {
-                    isFavorite = currentFavoriteStatus;
-                    updateFavoriteIcon();
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Error checking favorite status: " + e.getMessage(), e);
-            }
-        });
-    }
-
-    private void toggleFavorite() {
-        if (article == null || article.getUrl() == null) {
-            Toast.makeText(this, "Cannot save this article", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Toggle status immediately for UI responsiveness
-        isFavorite = !isFavorite;
-        updateFavoriteIcon();
-
-        // Update database in background
-        executorService.execute(() -> {
-            try {
+                // Check if article exists in database and get its favorite status
                 Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
 
-                if (existingArticle != null) {
-                    // Update existing article
-                    existingArticle.setFavorite(isFavorite);
-                    articleDao.updateArticle(existingArticle);
-                } else if (isFavorite) {
-                    // Insert new article as favorite
-                    article.setFavorite(true);
-                    article.setTimestamp(System.currentTimeMillis());
-                    articleDao.insertArticle(article);
-                }
-
                 mainHandler.post(() -> {
-                    String message = isFavorite ? "Added to favorites" : "Removed from favorites";
-                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
+                    if (existingArticle != null) {
+                        article.setFavorite(existingArticle.isFavorite());
+                        article.setId(existingArticle.getId()); // Set ID for updates
+                        Log.d(TAG, "Loaded favorite status: " + article.isFavorite());
+                    } else {
+                        article.setFavorite(false);
+                        Log.d(TAG, "Article not in database, default favorite: false");
+                    }
+                    // Update UI after loading favorite status
+                    invalidateOptionsMenu();
                 });
-
-                Log.d(TAG, "Favorite status updated: " + isFavorite);
             } catch (Exception e) {
-                Log.e(TAG, "Error updating favorite: " + e.getMessage(), e);
-
-                // Revert UI change if database update failed
-                mainHandler.post(() -> {
-                    isFavorite = !isFavorite;
-                    updateFavoriteIcon();
-                    Toast.makeText(DetailActivity.this, "Failed to update favorite", Toast.LENGTH_SHORT).show();
-                });
+                Log.e(TAG, "Error loading favorite status", e);
             }
         });
-    }
-
-    private void updateFavoriteIcon() {
-        try {
-            if (btnFavorite != null) {
-                int iconRes = isFavorite ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border;
-                btnFavorite.setImageResource(iconRes);
-
-                // Add animation
-                btnFavorite.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100)
-                        .withEndAction(() -> btnFavorite.animate().scaleX(1f).scaleY(1f).setDuration(100));
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error updating favorite icon: " + e.getMessage(), e);
-        }
     }
 
     private void setupUI() {
         if (article == null || isDestroyed) return;
 
         try {
+            // Setup toolbar
+            setSupportActionBar(binding.toolbar);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+                getSupportActionBar().setTitle("News Detail");
+            }
+
             // Set title
             if (article.getTitle() != null) {
                 binding.textTitle.setText(article.getTitle());
@@ -260,7 +222,7 @@ public class DetailActivity extends AppCompatActivity {
 
         try {
             // Configure WebView settings
-            binding.webView.getSettings().setJavaScriptEnabled(false); // Disable JS for stability
+            binding.webView.getSettings().setJavaScriptEnabled(false);
             binding.webView.getSettings().setDomStorageEnabled(false);
             binding.webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
 
@@ -326,10 +288,8 @@ public class DetailActivity extends AppCompatActivity {
 
     private void setupButtons() {
         try {
-            // Use toolbar instead of button_back
-            if (binding.toolbar != null) {
-                binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
-            }
+            // Setup toolbar navigation
+            binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
 
             // Share button
             if (binding.fabShare != null) {
@@ -346,6 +306,91 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
+    // PERUBAHAN: Implement options menu untuk favorite functionality
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.detail_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem favoriteItem = menu.findItem(R.id.action_favorite);
+        if (favoriteItem != null && article != null) {
+            // Update icon based on favorite status
+            if (article.isFavorite()) {
+                favoriteItem.setIcon(R.drawable.ic_favorite_filled);
+                favoriteItem.setTitle("Remove from favorites");
+            } else {
+                favoriteItem.setIcon(R.drawable.ic_favorite_border);
+                favoriteItem.setTitle("Add to favorites");
+            }
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_favorite) {
+            toggleFavorite();
+            return true;
+        } else if (item.getItemId() == android.R.id.home) {
+            safeFinish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    // PERUBAHAN: Implement toggle favorite functionality
+    private void toggleFavorite() {
+        if (article == null) {
+            Log.w(TAG, "Cannot toggle favorite - article is null");
+            return;
+        }
+
+        Log.d(TAG, "Toggling favorite for article: " + article.getTitle());
+        Log.d(TAG, "Current favorite status: " + article.isFavorite());
+
+        executorService.execute(() -> {
+            try {
+                // Toggle favorite status
+                boolean newFavoriteStatus = !article.isFavorite();
+                article.setFavorite(newFavoriteStatus);
+
+                // Check if article exists in database
+                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+
+                if (existingArticle != null) {
+                    // Update existing article
+                    existingArticle.setFavorite(newFavoriteStatus);
+                    articleDao.updateArticle(existingArticle);
+                    Log.d(TAG, "Updated existing article favorite status: " + newFavoriteStatus);
+                } else {
+                    // Insert new article with favorite status
+                    articleDao.insertArticle(article);
+                    Log.d(TAG, "Inserted new article with favorite status: " + newFavoriteStatus);
+                }
+
+                // Update UI on main thread
+                mainHandler.post(() -> {
+                    invalidateOptionsMenu(); // Refresh menu icon
+
+                    String message = newFavoriteStatus ?
+                            "Added to favorites" : "Removed from favorites";
+                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
+
+                    Log.d(TAG, "Favorite toggle completed: " + message);
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error toggling favorite", e);
+                mainHandler.post(() -> {
+                    Toast.makeText(DetailActivity.this, "Error updating favorite", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
     private void shareArticleSafely() {
         try {
             Intent shareIntent = new Intent(Intent.ACTION_SEND);
@@ -353,12 +398,9 @@ public class DetailActivity extends AppCompatActivity {
             String shareText = (article.getTitle() != null ? article.getTitle() : "News Article") +
                     "\n\n" + (article.getUrl() != null ? article.getUrl() : "");
             shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
-
-            // Add FLAG_ACTIVITY_NEW_TASK to prevent memory issues
             shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             startActivity(Intent.createChooser(shareIntent, "Share article"));
-
             Log.d(TAG, "Share intent started successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error sharing article: " + e.getMessage(), e);
@@ -366,7 +408,6 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    // MAIN FIX: Improved browser opening with proper cleanup
     private void openInBrowserSafely() {
         try {
             if (article.getUrl() == null || article.getUrl().isEmpty()) {
@@ -375,125 +416,22 @@ public class DetailActivity extends AppCompatActivity {
             }
 
             String url = article.getUrl();
-
-            // Ensure URL starts with http:// or https://
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 url = "https://" + url;
             }
 
-            Log.d(TAG, "Opening URL: " + url);
-
-            // Method 1: Try simple browser intent first
-            if (openBrowserSimple(url)) {
-                return;
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            if (browserIntent.resolveActivity(getPackageManager()) != null) {
+                startActivity(browserIntent);
+            } else {
+                Toast.makeText(this, "No browser app found", Toast.LENGTH_SHORT).show();
             }
-
-            // Method 2: Try with explicit browser apps
-            if (openBrowserExplicit(url)) {
-                return;
-            }
-
-            // Method 3: Try with chooser
-            if (openBrowserWithChooser(url)) {
-                return;
-            }
-
-            // Method 4: Copy URL as fallback
-            copyUrlToClipboard(url);
-
         } catch (Exception e) {
             Log.e(TAG, "Error opening browser: " + e.getMessage(), e);
             Toast.makeText(this, "Unable to open browser", Toast.LENGTH_SHORT).show();
         }
     }
 
-    // Method 1: Simple browser intent
-    private boolean openBrowserSimple(String url) {
-        try {
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-            // Check if there's an app to handle this
-            if (browserIntent.resolveActivity(getPackageManager()) != null) {
-                startActivity(browserIntent);
-                Log.d(TAG, "Opened with simple intent");
-                return true;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Simple browser intent failed: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // Method 2: Try explicit browser apps
-    private boolean openBrowserExplicit(String url) {
-        try {
-            // List of common browser package names
-            String[] browsers = {
-                    "com.android.chrome",           // Chrome
-                    "com.android.browser",          // Default Android Browser
-                    "org.mozilla.firefox",          // Firefox
-                    "com.opera.browser",            // Opera
-                    "com.UCMobile.intl",           // UC Browser
-                    "com.microsoft.emmx",           // Edge
-                    "com.brave.browser"            // Brave
-            };
-
-            for (String browserPackage : browsers) {
-                try {
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    browserIntent.setPackage(browserPackage);
-
-                    if (browserIntent.resolveActivity(getPackageManager()) != null) {
-                        startActivity(browserIntent);
-                        Log.d(TAG, "Opened with browser: " + browserPackage);
-                        return true;
-                    }
-                } catch (Exception e) {
-                    // Try next browser
-                    continue;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Explicit browser intent failed: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // Method 3: Browser with chooser
-    private boolean openBrowserWithChooser(String url) {
-        try {
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            Intent chooserIntent = Intent.createChooser(browserIntent, "Open with");
-
-            if (chooserIntent.resolveActivity(getPackageManager()) != null) {
-                startActivity(chooserIntent);
-                Log.d(TAG, "Opened with chooser");
-                return true;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Chooser intent failed: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // Method 4: Copy URL as fallback
-    private void copyUrlToClipboard(String url) {
-        try {
-            android.content.ClipboardManager clipboard =
-                    (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            android.content.ClipData clip = android.content.ClipData.newPlainText("News URL", url);
-            clipboard.setPrimaryClip(clip);
-
-            Toast.makeText(this, "No browser found. URL copied to clipboard: " + url,
-                    Toast.LENGTH_LONG).show();
-            Log.d(TAG, "URL copied to clipboard as fallback");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to copy URL: " + e.getMessage());
-            Toast.makeText(this, "Unable to open browser or copy URL", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    // CRITICAL: Proper WebView cleanup
     private void cleanupWebView() {
         try {
             if (binding.webView != null) {

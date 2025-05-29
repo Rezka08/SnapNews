@@ -16,20 +16,6 @@
         app:titleTextColor="#FFFFFF"
         app:navigationIcon="?attr/homeAsUpIndicator">
 
-        <!-- Favorite Toggle Button in Toolbar -->
-        <ImageView
-            android:id="@+id/btn_favorite"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="end"
-            android:layout_marginEnd="16dp"
-            android:src="@drawable/ic_favorite_border"
-            android:contentDescription="Toggle favorite"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="4dp" />
-
     </androidx.appcompat.widget.Toolbar>
 
     <!-- Content ScrollView -->
