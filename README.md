@@ -71,7 +71,7 @@ SnapNews adalah aplikasi berita Android modern yang memberikan pengalaman membac
    a. **Buat file `local.properties`** di root project (sejajar dengan `build.gradle`)
    ```properties
    # local.properties
-   NEWS_API_KEY=87e66d5122824db289814d3efd2ae21b
+   NEWS_API_KEY=(API KEY HERE)
    ```
    
    b. **Pastikan `local.properties` ada di `.gitignore`**
