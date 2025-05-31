@@ -1,89 +1,204 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- layout/item_news.xml - Compatible version with Material Components -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/card_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="4dp"
+    android:layout_margin="8dp"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="?android:attr/selectableItemBackground">
+    android:foreground="?android:attr/selectableItemBackground"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="8dp"
+    app:strokeColor="@color/light_gray"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+        <!-- Header dengan gambar -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="200dp">
 
-            <LinearLayout
+            <ImageView
+                android:id="@+id/image_news"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_height="match_parent"
+                android:background="@color/light_gray"
+                android:contentDescription="News image"
+                android:scaleType="centerCrop"
+                tools:src="@drawable/placeholder_image" />
 
-                <TextView
-                    android:id="@+id/text_title"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    tools:text="Breaking News Title" />
+            <!-- Gradient overlay -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="80dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/gradient_overlay" />
+
+            <!-- Favorite icon -->
+            <ImageView
+                android:id="@+id/image_favorite"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="12dp"
+                android:background="@drawable/circular_background_white"
+                android:contentDescription="Favorite icon"
+                android:padding="6dp"
+                android:src="@drawable/ic_favorite_filled"
+                android:visibility="gone" />
+
+            <!-- Category badge -->
+            <TextView
+                android:id="@+id/text_category"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="12dp"
+                android:background="@drawable/category_badge_bg"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:text="Technology"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- Reading time -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="12dp"
+                android:background="@drawable/reading_time_bg"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp">
 
                 <ImageView
-                    android:id="@+id/image_favorite"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_favorite_filled"
-                    android:visibility="gone"
-                    android:contentDescription="Favorite icon" />
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginEnd="4dp"
+                    android:contentDescription="Time icon"
+                    android:src="@drawable/ic_access_time" />
+
+                <TextView
+                    android:id="@+id/text_reading_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3 min read"
+                    android:textColor="@color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
 
             </LinearLayout>
 
+        </FrameLayout>
+
+        <!-- Content area -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/text_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:lineSpacingExtra="2dp"
+                android:maxLines="2"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                tools:text="Breaking News: Revolutionary Technology Announced Today" />
+
+            <!-- Description -->
             <TextView
                 android:id="@+id/text_description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="14sp"
-                android:textColor="#757575"
-                android:maxLines="2"
+                android:layout_marginTop="8dp"
+                android:alpha="0.8"
                 android:ellipsize="end"
-                tools:text="News description here..." />
+                android:lineSpacingExtra="2dp"
+                android:maxLines="3"
+                android:textColor="@color/gray"
+                android:textSize="14sp"
+                tools:text="This is a detailed description of the news article that provides context and important information..." />
 
-            <TextView
-                android:id="@+id/text_source_date"
+            <!-- Bottom info -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textSize="12sp"
-                android:textColor="#9E9E9E"
-                tools:text="CNN • 2 hours ago" />
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Source info -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="6dp"
+                        android:alpha="0.6"
+                        android:contentDescription="Source icon"
+                        android:src="@drawable/ic_article" />
+
+                    <TextView
+                        android:id="@+id/text_source_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:alpha="0.7"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:textColor="@color/gray"
+                        android:textSize="12sp"
+                        tools:text="CNN • 2 hours ago" />
+
+                </LinearLayout>
+
+                <!-- Share button -->
+                <ImageButton
+                    android:id="@+id/button_share"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:alpha="0.6"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Share article"
+                    android:src="@drawable/ic_share" />
+
+                <!-- Bookmark button -->
+                <ImageButton
+                    android:id="@+id/button_bookmark"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:alpha="0.6"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Bookmark article"
+                    android:src="@drawable/ic_bookmark_border" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <ImageView
-            android:id="@+id/image_news"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_marginStart="12dp"
-            android:scaleType="centerCrop"
-            android:background="@drawable/rounded_image_background"
-            android:contentDescription="News image"
-            tools:src="@drawable/placeholder_image" />
-
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>
