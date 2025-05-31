@@ -21,7 +21,7 @@ import com.example.snapnews.R;
 import com.example.snapnews.adapter.FilterChipAdapter;
 import com.example.snapnews.adapter.NewsAdapter;
 import com.example.snapnews.database.ArticleDao;
-import com.example.snapnews.database.NewsDatabase;
+import com.example.snapnews.database.NewsDatabaseHelper;
 import com.example.snapnews.databinding.FragmentHomeBinding;
 import com.example.snapnews.models.Article;
 import com.example.snapnews.models.FilterChip;
@@ -44,7 +44,11 @@ public class HomeFragment extends Fragment {
     private List<Article> articles = new ArrayList<>();
     private List<FilterChip> filterChips = new ArrayList<>();
     private NewsApiService newsApiService;
+
+    // PERUBAHAN: Menggunakan NewsDatabaseHelper
     private ArticleDao articleDao;
+    private NewsDatabaseHelper dbHelper; // GANTI dari NewsDatabase ke NewsDatabaseHelper
+
     private ExecutorService executorService;
     private Handler mainHandler;
     private FilterChip currentFilter;
@@ -68,11 +72,14 @@ public class HomeFragment extends Fragment {
 
     private void initializeComponents() {
         newsApiService = RetrofitClient.getNewsApiService();
-        NewsDatabase database = NewsDatabase.getDatabase(requireContext());
-        articleDao = database.articleDao();
+
+        // PERUBAHAN: Inisialisasi NewsDatabaseHelper
+        dbHelper = NewsDatabaseHelper.getInstance(requireContext());
+        articleDao = new ArticleDao(dbHelper);
+
         executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
-        Log.d(TAG, "Components initialized");
+        Log.d(TAG, "Components initialized with NewsDatabaseHelper");
     }
 
     private void setupFilterChips() {
@@ -120,7 +127,6 @@ public class HomeFragment extends Fragment {
     private void setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener(() -> {
             Log.d(TAG, "Swipe refresh triggered - forcing API call");
-            // Force API call on swipe refresh
             loadNewsFromApi();
         });
 
@@ -142,7 +148,7 @@ public class HomeFragment extends Fragment {
         articles.clear();
         newsAdapter.notifyDataSetChanged();
 
-        // FORCE API CALL regardless of network status for testing
+        // Force API call for testing
         Log.d(TAG, "FORCING API CALL for filter test");
         loadNewsFromApi();
     }
@@ -151,14 +157,13 @@ public class HomeFragment extends Fragment {
         Log.d(TAG, "=== LOADING NEWS ===");
         Log.d(TAG, "Current filter: " + (currentFilter != null ? currentFilter.getName() : "null"));
 
-        // Check network with detailed logging
         boolean networkAvailable = isNetworkAvailable();
         Log.d(TAG, "Network check result: " + networkAvailable);
 
         if (networkAvailable) {
             loadNewsFromApi();
         } else {
-            Log.w(TAG, "No network available, loading from database");
+            Log.w(TAG, "No network available, loading from NewsDatabaseHelper");
             loadNewsFromDatabase();
         }
     }
@@ -213,12 +218,11 @@ public class HomeFragment extends Fragment {
                         newsAdapter.notifyDataSetChanged();
                         Log.d(TAG, "Adapter notified");
 
-                        // Save to database
+                        // Save to NewsDatabaseHelper
                         saveArticlesToDatabase(newsResponse.getArticles());
 
                         showContent();
 
-                        // Show success message with filter name
                         String message = "✅ " + currentFilter.getName() + ": " + articleCount + " articles loaded";
                         Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
                         Log.d(TAG, message);
@@ -260,39 +264,58 @@ public class HomeFragment extends Fragment {
     private void loadNewsFromDatabase() {
         showLoading();
 
+        // PERUBAHAN: Menggunakan NewsDatabaseHelper
         executorService.execute(() -> {
-            Log.d(TAG, "Loading news from database");
-            List<Article> cachedArticles = articleDao.getAllArticles();
+            Log.d(TAG, "Loading news from NewsDatabaseHelper");
 
-            mainHandler.post(() -> {
-                hideLoading();
+            try {
+                List<Article> cachedArticles = articleDao.getAllArticles();
 
-                if (cachedArticles != null && !cachedArticles.isEmpty()) {
-                    Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from database");
-                    articles.clear();
-                    articles.addAll(cachedArticles);
-                    newsAdapter.notifyDataSetChanged();
-                    showContent();
+                mainHandler.post(() -> {
+                    hideLoading();
 
-                    String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
-                    Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                } else {
-                    Log.w(TAG, "No cached articles found");
-                    showError("No cached news available", "Connect to internet and pull down to refresh");
-                }
-            });
+                    if (cachedArticles != null && !cachedArticles.isEmpty()) {
+                        Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from NewsDatabaseHelper");
+                        articles.clear();
+                        articles.addAll(cachedArticles);
+                        newsAdapter.notifyDataSetChanged();
+                        showContent();
+
+                        String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
+                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.w(TAG, "No cached articles found in NewsDatabaseHelper");
+                        showError("No cached news available", "Connect to internet and pull down to refresh");
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading from NewsDatabaseHelper", e);
+                mainHandler.post(() -> {
+                    hideLoading();
+                    showError("Database Error", "Error loading cached news");
+                });
+            }
         });
     }
 
     private void saveArticlesToDatabase(List<Article> articles) {
+        // PERUBAHAN: Menggunakan NewsDatabaseHelper
         executorService.execute(() -> {
             try {
-                Log.d(TAG, "Saving " + articles.size() + " articles to database");
-                // Don't clear old articles, just add new ones
+                Log.d(TAG, "Saving " + articles.size() + " articles to NewsDatabaseHelper");
+
+                // Set timestamp untuk setiap artikel
+                for (Article article : articles) {
+                    if (article.getTimestamp() == 0) {
+                        article.setTimestamp(System.currentTimeMillis());
+                    }
+                }
+
                 articleDao.insertArticles(articles);
-                Log.d(TAG, "Articles saved successfully");
+                Log.d(TAG, "Articles saved successfully to NewsDatabaseHelper");
+
             } catch (Exception e) {
-                Log.e(TAG, "Error saving articles to database", e);
+                Log.e(TAG, "Error saving articles to NewsDatabaseHelper", e);
             }
         });
     }
@@ -367,18 +390,8 @@ public class HomeFragment extends Fragment {
             }
 
             NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-            Log.d(TAG, "NetworkInfo: " + activeNetworkInfo);
-
-            boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
-            boolean isAvailable = activeNetworkInfo != null && activeNetworkInfo.isAvailable();
-
-            Log.d(TAG, "Network connected: " + isConnected);
-            Log.d(TAG, "Network available: " + isAvailable);
-            Log.d(TAG, "Network type: " + (activeNetworkInfo != null ? activeNetworkInfo.getTypeName() : "null"));
-
-            // Try both conditions
-            boolean result = isConnected && isAvailable;
-            Log.d(TAG, "Final network result: " + result);
+            boolean result = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+            Log.d(TAG, "Network available: " + result);
 
             return result;
 
@@ -395,6 +408,6 @@ public class HomeFragment extends Fragment {
             executorService.shutdown();
         }
         binding = null;
-        Log.d(TAG, "HomeFragment destroyed");
+        Log.d(TAG, "HomeFragment destroyed - NewsDatabaseHelper connections will be closed automatically");
     }
 }
