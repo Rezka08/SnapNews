@@ -24,7 +24,7 @@
     <color name="error_color">#F44336</color>
     <color name="on_error">#FFFFFF</color>
 
-    <!-- Dark Theme Colors -->
+    <!-- ========== DARK THEME COLORS (MISSING) ========== -->
     <color name="primary_color_dark">#2196F3</color>
     <color name="surface_color_dark">#121212</color>
     <color name="background_color_dark">#000000</color>
@@ -38,4 +38,26 @@
     <color name="light_gray">#F5F5F5</color>
     <color name="dark_gray">#424242</color>
     <color name="transparent">#00000000</color>
+
+    <!-- Additional colors for DetailActivity -->
+    <color name="success_color">#4CAF50</color>
+    <color name="warning_color">#FF9800</color>
+    <color name="info_color">#2196F3</color>
+
+    <!-- Reading mode colors -->
+    <color name="reading_bg">#FEFEFE</color>
+    <color name="reading_text">#333333</color>
+    <color name="reading_accent">#1976D2</color>
+
+    <!-- Card colors -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_shadow">#1A000000</color>
+
+    <!-- Button state colors -->
+    <color name="button_pressed">#E3F2FD</color>
+    <color name="button_disabled">#BDBDBD</color>
+
+    <!-- Overlay colors -->
+    <color name="overlay_dark">#80000000</color>
+    <color name="overlay_light">#80FFFFFF</color>
 </resources>

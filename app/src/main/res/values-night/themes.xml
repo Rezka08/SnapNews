@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SnapNews" parent="Theme.AppCompat.DayNight.DarkActionBar">
+    <!-- CHANGE: From Theme.AppCompat to Theme.MaterialComponents -->
+    <style name="Theme.SnapNews" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/primary_color_dark</item>
         <item name="colorPrimaryDark">@color/primary_dark_color</item>
         <item name="colorAccent">@color/secondary_color</item>
@@ -12,5 +12,10 @@
         <item name="android:statusBarColor">@color/primary_color_dark</item>
         <item name="android:navigationBarColor">@color/surface_color_dark</item>
         <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.SnapNews.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
     </style>
 </resources>

@@ -1,139 +1,295 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- layout/activity_detail.xml - Fixed version with compatible attributes -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     tools:context=".activity.DetailActivity">
 
-    <!-- Toolbar with Favorite Icon -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="#1976D2"
-        app:titleTextColor="#FFFFFF"
-        app:navigationIcon="?attr/homeAsUpIndicator">
+        android:layout_height="wrap_content"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
-    </androidx.appcompat.widget.Toolbar>
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:title="News Detail"
+            app:titleTextColor="@color/white"
+            app:navigationIcon="?attr/homeAsUpIndicator" />
 
-    <!-- Content ScrollView -->
-    <ScrollView
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Main Content -->
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Article Image -->
-            <ImageView
-                android:id="@+id/image_article"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:scaleType="centerCrop"
-                android:background="#E0E0E0"
-                android:contentDescription="Article image" />
-
-            <!-- Content Container -->
-            <LinearLayout
+            <!-- Article Header -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_margin="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="8dp">
 
-                <!-- Title -->
-                <TextView
-                    android:id="@+id/text_title"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121"
-                    android:lineSpacingExtra="4dp"
-                    tools:text="Article Title Goes Here" />
+                    android:orientation="vertical">
 
-                <!-- Author and Date -->
-                <TextView
-                    android:id="@+id/text_author_date"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:textSize="14sp"
-                    android:textColor="#757575"
-                    tools:text="By Author • May 25, 2025" />
-
-                <!-- Description -->
-                <TextView
-                    android:id="@+id/text_description"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textSize="16sp"
-                    android:textColor="#424242"
-                    android:lineSpacingExtra="4dp"
-                    tools:text="Article description goes here. This is a sample description to show how the text will look in the detail view." />
-
-                <!-- Progress Bar -->
-                <ProgressBar
-                    android:id="@+id/progress_bar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_marginTop="16dp"
-                    android:visibility="gone" />
-
-                <!-- WebView Container -->
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="400dp"
-                    android:layout_marginTop="16dp"
-                    android:background="#F5F5F5">
-
-                    <WebView
-                        android:id="@+id/web_view"
+                    <!-- Article Image -->
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
+                        android:layout_height="250dp">
 
-                </FrameLayout>
+                        <ImageView
+                            android:id="@+id/image_article"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:background="@color/light_gray"
+                            android:contentDescription="Article image" />
 
-            </LinearLayout>
+                        <!-- Gradient overlay -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="100dp"
+                            android:layout_gravity="bottom"
+                            android:background="@drawable/gradient_overlay" />
+
+                        <!-- Reading time badge -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="16dp"
+                            android:background="@drawable/reading_time_bg"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="6dp">
+
+                            <ImageView
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:src="@drawable/ic_access_time"
+                                android:layout_marginEnd="4dp"
+                                android:contentDescription="Time icon" />
+
+                            <TextView
+                                android:id="@+id/text_reading_time"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="3 min read"
+                                android:textColor="@color/white"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                    </FrameLayout>
+
+                    <!-- Article Info -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <!-- Title -->
+                        <TextView
+                            android:id="@+id/text_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/black"
+                            android:lineSpacingExtra="4dp"
+                            tools:text="Breaking News: Revolutionary Technology Announced" />
+
+                        <!-- Author and Date -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:src="@drawable/ic_person"
+                                android:layout_marginEnd="6dp"
+                                android:alpha="0.6"
+                                android:contentDescription="Author icon" />
+
+                            <TextView
+                                android:id="@+id/text_author_date"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textSize="14sp"
+                                android:textColor="@color/gray"
+                                tools:text="By John Doe • 2 hours ago" />
+
+                        </LinearLayout>
+
+                        <!-- Description -->
+                        <TextView
+                            android:id="@+id/text_description"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:textSize="16sp"
+                            android:textColor="@color/dark_gray"
+                            android:lineSpacingExtra="4dp"
+                            tools:text="Detailed description of the news article that provides important context and background information for readers." />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Reading Mode Toggle -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:strokeColor="@color/primary_color"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="12dp"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_article"
+                        android:layout_marginEnd="12dp"
+                        android:contentDescription="Article icon" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Reading Mode"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@color/black" />
+
+                        <TextView
+                            android:id="@+id/text_mode_description"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tap to read full article"
+                            android:textSize="12sp"
+                            android:textColor="@color/gray" />
+
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/button_toggle_mode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Full Article"
+                        android:textSize="12sp"
+                        style="@style/Widget.MaterialComponents.Button" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Progress Bar -->
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_margin="20dp"
+                android:visibility="gone" />
+
+            <!-- WebView Container -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="16dp"
+                android:minHeight="400dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <WebView
+                    android:id="@+id/web_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp" />
+
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
-    <!-- Bottom Action Buttons -->
-    <LinearLayout
+    <!-- Bottom Action Bar -->
+    <com.google.android.material.bottomappbar.BottomAppBar
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="#FAFAFA">
+        android:layout_gravity="bottom"
+        app:elevation="8dp">
 
-        <Button
-            android:id="@+id/fab_share"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:text="Share"
-            android:backgroundTint="#FF9800"
-            android:textColor="#FFFFFF" />
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
 
-        <Button
-            android:id="@+id/fab_open_browser"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Open in Browser"
-            android:backgroundTint="#4CAF50"
-            android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/fab_share"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Share"
+                android:drawableLeft="@drawable/ic_share"
+                android:drawablePadding="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/fab_open_browser"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Open Browser"
+                android:drawableLeft="@drawable/ic_open_in_browser"
+                android:drawablePadding="8dp"
+                style="@style/Widget.MaterialComponents.Button" />
 
-</LinearLayout>
+        </LinearLayout>
+
+    </com.google.android.material.bottomappbar.BottomAppBar>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
