@@ -1,0 +1,1826 @@
+Index: app/src/main/java/com/example/snapnews/activity/DetailActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.activity;\n\nimport android.content.ActivityNotFoundException;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.graphics.Bitmap;\nimport android.net.Uri;\nimport android.os.Bundle;\nimport android.os.Handler;\nimport android.os.Looper;\nimport android.util.Log;\nimport android.view.View;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.widget.ImageView;\nimport android.widget.Toast;\nimport androidx.appcompat.app.AppCompatActivity;\nimport com.bumptech.glide.Glide;\nimport com.example.snapnews.R;\nimport com.example.snapnews.database.ArticleDao;\nimport com.example.snapnews.database.NewsDatabase;\nimport com.example.snapnews.databinding.ActivityDetailBinding;\nimport com.example.snapnews.models.Article;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\n\npublic class DetailActivity extends AppCompatActivity {\n    private static final String TAG = \"DetailActivity\";\n    private ActivityDetailBinding binding;\n    private Article article;\n    private ArticleDao articleDao;\n    private ExecutorService executorService;\n    private Handler mainHandler;\n    private boolean isDestroyed = false;\n    private boolean isFavorite = false;\n    private ImageView btnFavorite;\n\n    public static final String EXTRA_ARTICLE_TITLE = \"extra_article_title\";\n    public static final String EXTRA_ARTICLE_DESCRIPTION = \"extra_article_description\";\n    public static final String EXTRA_ARTICLE_URL = \"extra_article_url\";\n    public static final String EXTRA_ARTICLE_IMAGE_URL = \"extra_article_image_url\";\n    public static final String EXTRA_ARTICLE_PUBLISHED_AT = \"extra_article_published_at\";\n    public static final String EXTRA_ARTICLE_CONTENT = \"extra_article_content\";\n    public static final String EXTRA_ARTICLE_AUTHOR = \"extra_article_author\";\n    public static final String EXTRA_ARTICLE_SOURCE = \"extra_article_source\";\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n\n        try {\n            binding = ActivityDetailBinding.inflate(getLayoutInflater());\n            setContentView(binding.getRoot());\n\n            // Initialize components\n            mainHandler = new Handler(Looper.getMainLooper());\n            initializeDatabase();\n            getArticleFromIntent();\n            setupUI();\n            setupButtons();\n            setupFavoriteButton();\n            checkFavoriteStatus();\n\n            Log.d(TAG, \"DetailActivity created successfully\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in onCreate: \" + e.getMessage(), e);\n            finish();\n        }\n    }\n\n    private void initializeDatabase() {\n        try {\n            NewsDatabase database = NewsDatabase.getDatabase(this);\n            articleDao = database.articleDao();\n            executorService = Executors.newSingleThreadExecutor();\n        } catch (Exception e) {\n            Log.e(TAG, \"Error initializing database: \" + e.getMessage(), e);\n        }\n    }\n\n    private void getArticleFromIntent() {\n        try {\n            Intent intent = getIntent();\n            article = new Article();\n            article.setTitle(intent.getStringExtra(EXTRA_ARTICLE_TITLE));\n            article.setDescription(intent.getStringExtra(EXTRA_ARTICLE_DESCRIPTION));\n            article.setUrl(intent.getStringExtra(EXTRA_ARTICLE_URL));\n            article.setUrlToImage(intent.getStringExtra(EXTRA_ARTICLE_IMAGE_URL));\n            article.setPublishedAt(intent.getStringExtra(EXTRA_ARTICLE_PUBLISHED_AT));\n            article.setContent(intent.getStringExtra(EXTRA_ARTICLE_CONTENT));\n            article.setAuthor(intent.getStringExtra(EXTRA_ARTICLE_AUTHOR));\n\n            Log.d(TAG, \"Article data loaded: \" + article.getTitle());\n        } catch (Exception e) {\n            Log.e(TAG, \"Error getting article from intent: \" + e.getMessage(), e);\n        }\n    }\n\n    private void setupFavoriteButton() {\n        try {\n            btnFavorite = binding.toolbar.findViewById(R.id.btn_favorite);\n            if (btnFavorite != null) {\n                btnFavorite.setOnClickListener(v -> toggleFavorite());\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error setting up favorite button: \" + e.getMessage(), e);\n        }\n    }\n\n    private void checkFavoriteStatus() {\n        if (article == null || article.getUrl() == null) return;\n\n        executorService.execute(() -> {\n            try {\n                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());\n                boolean currentFavoriteStatus = existingArticle != null && existingArticle.isFavorite();\n\n                mainHandler.post(() -> {\n                    isFavorite = currentFavoriteStatus;\n                    updateFavoriteIcon();\n                });\n            } catch (Exception e) {\n                Log.e(TAG, \"Error checking favorite status: \" + e.getMessage(), e);\n            }\n        });\n    }\n\n    private void toggleFavorite() {\n        if (article == null || article.getUrl() == null) {\n            Toast.makeText(this, \"Cannot save this article\", Toast.LENGTH_SHORT).show();\n            return;\n        }\n\n        // Toggle status immediately for UI responsiveness\n        isFavorite = !isFavorite;\n        updateFavoriteIcon();\n\n        // Update database in background\n        executorService.execute(() -> {\n            try {\n                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());\n\n                if (existingArticle != null) {\n                    // Update existing article\n                    existingArticle.setFavorite(isFavorite);\n                    articleDao.updateArticle(existingArticle);\n                } else if (isFavorite) {\n                    // Insert new article as favorite\n                    article.setFavorite(true);\n                    article.setTimestamp(System.currentTimeMillis());\n                    articleDao.insertArticle(article);\n                }\n\n                mainHandler.post(() -> {\n                    String message = isFavorite ? \"Added to favorites\" : \"Removed from favorites\";\n                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();\n                });\n\n                Log.d(TAG, \"Favorite status updated: \" + isFavorite);\n            } catch (Exception e) {\n                Log.e(TAG, \"Error updating favorite: \" + e.getMessage(), e);\n\n                // Revert UI change if database update failed\n                mainHandler.post(() -> {\n                    isFavorite = !isFavorite;\n                    updateFavoriteIcon();\n                    Toast.makeText(DetailActivity.this, \"Failed to update favorite\", Toast.LENGTH_SHORT).show();\n                });\n            }\n        });\n    }\n\n    private void updateFavoriteIcon() {\n        try {\n            if (btnFavorite != null) {\n                int iconRes = isFavorite ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border;\n                btnFavorite.setImageResource(iconRes);\n\n                // Add animation\n                btnFavorite.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100)\n                        .withEndAction(() -> btnFavorite.animate().scaleX(1f).scaleY(1f).setDuration(100));\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error updating favorite icon: \" + e.getMessage(), e);\n        }\n    }\n\n    private void setupUI() {\n        if (article == null || isDestroyed) return;\n\n        try {\n            // Set title\n            if (article.getTitle() != null) {\n                binding.textTitle.setText(article.getTitle());\n            }\n\n            // Set description\n            if (article.getDescription() != null && !article.getDescription().isEmpty()) {\n                binding.textDescription.setText(article.getDescription());\n                binding.textDescription.setVisibility(View.VISIBLE);\n            } else {\n                binding.textDescription.setVisibility(View.GONE);\n            }\n\n            // Set author and date\n            setupAuthorDate();\n\n            // Load image safely\n            loadArticleImage();\n\n            // Setup WebView with proper cleanup\n            setupWebViewSafely();\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in setupUI: \" + e.getMessage(), e);\n        }\n    }\n\n    private void setupAuthorDate() {\n        try {\n            String authorDate = \"\";\n            if (article.getAuthor() != null && !article.getAuthor().isEmpty()) {\n                authorDate = \"By \" + article.getAuthor();\n            }\n            if (article.getPublishedAt() != null) {\n                String formattedDate = formatDate(article.getPublishedAt());\n                if (!authorDate.isEmpty()) {\n                    authorDate += \" • \" + formattedDate;\n                } else {\n                    authorDate = formattedDate;\n                }\n            }\n            if (!authorDate.isEmpty()) {\n                binding.textAuthorDate.setText(authorDate);\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error setting author date: \" + e.getMessage(), e);\n        }\n    }\n\n    private void loadArticleImage() {\n        try {\n            if (article.getUrlToImage() != null && !article.getUrlToImage().isEmpty() && !isDestroyed) {\n                Glide.with(this)\n                        .load(article.getUrlToImage())\n                        .placeholder(R.drawable.placeholder_image)\n                        .error(R.drawable.placeholder_image)\n                        .into(binding.imageArticle);\n            } else {\n                binding.imageArticle.setImageResource(R.drawable.placeholder_image);\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error loading image: \" + e.getMessage(), e);\n            binding.imageArticle.setImageResource(R.drawable.placeholder_image);\n        }\n    }\n\n    private void setupWebViewSafely() {\n        if (isDestroyed || binding.webView == null) return;\n\n        try {\n            // Configure WebView settings\n            binding.webView.getSettings().setJavaScriptEnabled(false); // Disable JS for stability\n            binding.webView.getSettings().setDomStorageEnabled(false);\n            binding.webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);\n\n            // Set WebView client with proper cleanup\n            binding.webView.setWebViewClient(new WebViewClient() {\n                @Override\n                public void onPageStarted(WebView view, String url, Bitmap favicon) {\n                    super.onPageStarted(view, url, favicon);\n                    if (!isDestroyed && binding.progressBar != null) {\n                        binding.progressBar.setVisibility(View.VISIBLE);\n                    }\n                }\n\n                @Override\n                public void onPageFinished(WebView view, String url) {\n                    super.onPageFinished(view, url);\n                    if (!isDestroyed && binding.progressBar != null) {\n                        binding.progressBar.setVisibility(View.GONE);\n                    }\n                }\n\n                @Override\n                public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {\n                    super.onReceivedError(view, errorCode, description, failingUrl);\n                    Log.e(TAG, \"WebView error: \" + description);\n                    if (!isDestroyed && binding.progressBar != null) {\n                        binding.progressBar.setVisibility(View.GONE);\n                    }\n                }\n            });\n\n            // Load content\n            loadWebViewContent();\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error setting up WebView: \" + e.getMessage(), e);\n            if (binding.progressBar != null) {\n                binding.progressBar.setVisibility(View.GONE);\n            }\n        }\n    }\n\n    private void loadWebViewContent() {\n        try {\n            if (article.getContent() != null && !article.getContent().isEmpty()) {\n                String htmlContent = \"<html><head>\" +\n                        \"<meta name='viewport' content='width=device-width, initial-scale=1.0'>\" +\n                        \"<style>\" +\n                        \"body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 16px; }\" +\n                        \"img { max-width: 100%; height: auto; }\" +\n                        \"</style>\" +\n                        \"</head><body>\"\n                        + article.getContent().replace(\"\\n\", \"<br>\") +\n                        \"</body></html>\";\n                binding.webView.loadDataWithBaseURL(null, htmlContent, \"text/html\", \"UTF-8\", null);\n            } else {\n                binding.webView.loadData(\"<html><body><p>Content not available</p></body></html>\", \"text/html\", \"UTF-8\");\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error loading WebView content: \" + e.getMessage(), e);\n        }\n    }\n\n    private void setupButtons() {\n        try {\n            // Use toolbar instead of button_back\n            if (binding.toolbar != null) {\n                binding.toolbar.setNavigationOnClickListener(v -> safeFinish());\n            }\n\n            // Share button\n            if (binding.fabShare != null) {\n                binding.fabShare.setOnClickListener(v -> shareArticleSafely());\n            }\n\n            // Open browser button\n            if (binding.fabOpenBrowser != null) {\n                binding.fabOpenBrowser.setOnClickListener(v -> openInBrowserSafely());\n            }\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error setting up buttons: \" + e.getMessage(), e);\n        }\n    }\n\n    private void shareArticleSafely() {\n        try {\n            Intent shareIntent = new Intent(Intent.ACTION_SEND);\n            shareIntent.setType(\"text/plain\");\n            String shareText = (article.getTitle() != null ? article.getTitle() : \"News Article\") +\n                    \"\\n\\n\" + (article.getUrl() != null ? article.getUrl() : \"\");\n            shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);\n\n            // Add FLAG_ACTIVITY_NEW_TASK to prevent memory issues\n            shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n\n            startActivity(Intent.createChooser(shareIntent, \"Share article\"));\n\n            Log.d(TAG, \"Share intent started successfully\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error sharing article: \" + e.getMessage(), e);\n            Toast.makeText(this, \"Unable to share article\", Toast.LENGTH_SHORT).show();\n        }\n    }\n\n    // MAIN FIX: Improved browser opening with proper cleanup\n    private void openInBrowserSafely() {\n        try {\n            if (article.getUrl() == null || article.getUrl().isEmpty()) {\n                Toast.makeText(this, \"No URL available\", Toast.LENGTH_SHORT).show();\n                return;\n            }\n\n            String url = article.getUrl();\n\n            // Ensure URL starts with http:// or https://\n            if (!url.startsWith(\"http://\") && !url.startsWith(\"https://\")) {\n                url = \"https://\" + url;\n            }\n\n            Log.d(TAG, \"Opening URL: \" + url);\n\n            // Method 1: Try simple browser intent first\n            if (openBrowserSimple(url)) {\n                return;\n            }\n\n            // Method 2: Try with explicit browser apps\n            if (openBrowserExplicit(url)) {\n                return;\n            }\n\n            // Method 3: Try with chooser\n            if (openBrowserWithChooser(url)) {\n                return;\n            }\n\n            // Method 4: Copy URL as fallback\n            copyUrlToClipboard(url);\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error opening browser: \" + e.getMessage(), e);\n            Toast.makeText(this, \"Unable to open browser\", Toast.LENGTH_SHORT).show();\n        }\n    }\n\n    // Method 1: Simple browser intent\n    private boolean openBrowserSimple(String url) {\n        try {\n            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));\n\n            // Check if there's an app to handle this\n            if (browserIntent.resolveActivity(getPackageManager()) != null) {\n                startActivity(browserIntent);\n                Log.d(TAG, \"Opened with simple intent\");\n                return true;\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Simple browser intent failed: \" + e.getMessage());\n        }\n        return false;\n    }\n\n    // Method 2: Try explicit browser apps\n    private boolean openBrowserExplicit(String url) {\n        try {\n            // List of common browser package names\n            String[] browsers = {\n                    \"com.android.chrome\",           // Chrome\n                    \"com.android.browser\",          // Default Android Browser\n                    \"org.mozilla.firefox\",          // Firefox\n                    \"com.opera.browser\",            // Opera\n                    \"com.UCMobile.intl\",           // UC Browser\n                    \"com.microsoft.emmx\",           // Edge\n                    \"com.brave.browser\"            // Brave\n            };\n\n            for (String browserPackage : browsers) {\n                try {\n                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));\n                    browserIntent.setPackage(browserPackage);\n\n                    if (browserIntent.resolveActivity(getPackageManager()) != null) {\n                        startActivity(browserIntent);\n                        Log.d(TAG, \"Opened with browser: \" + browserPackage);\n                        return true;\n                    }\n                } catch (Exception e) {\n                    // Try next browser\n                    continue;\n                }\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Explicit browser intent failed: \" + e.getMessage());\n        }\n        return false;\n    }\n\n    // Method 3: Browser with chooser\n    private boolean openBrowserWithChooser(String url) {\n        try {\n            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));\n            Intent chooserIntent = Intent.createChooser(browserIntent, \"Open with\");\n\n            if (chooserIntent.resolveActivity(getPackageManager()) != null) {\n                startActivity(chooserIntent);\n                Log.d(TAG, \"Opened with chooser\");\n                return true;\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Chooser intent failed: \" + e.getMessage());\n        }\n        return false;\n    }\n\n    // Method 4: Copy URL as fallback\n    private void copyUrlToClipboard(String url) {\n        try {\n            android.content.ClipboardManager clipboard =\n                    (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);\n            android.content.ClipData clip = android.content.ClipData.newPlainText(\"News URL\", url);\n            clipboard.setPrimaryClip(clip);\n\n            Toast.makeText(this, \"No browser found. URL copied to clipboard: \" + url,\n                    Toast.LENGTH_LONG).show();\n            Log.d(TAG, \"URL copied to clipboard as fallback\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Failed to copy URL: \" + e.getMessage());\n            Toast.makeText(this, \"Unable to open browser or copy URL\", Toast.LENGTH_SHORT).show();\n        }\n    }\n\n    // CRITICAL: Proper WebView cleanup\n    private void cleanupWebView() {\n        try {\n            if (binding.webView != null) {\n                binding.webView.stopLoading();\n                binding.webView.clearCache(true);\n                binding.webView.clearHistory();\n                binding.webView.loadUrl(\"about:blank\");\n                Log.d(TAG, \"WebView cleaned up\");\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error cleaning WebView: \" + e.getMessage(), e);\n        }\n    }\n\n    private void safeFinish() {\n        try {\n            cleanupWebView();\n            finish();\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in safeFinish: \" + e.getMessage(), e);\n            finish();\n        }\n    }\n\n    private String formatDate(String dateString) {\n        try {\n            if (dateString != null && dateString.length() >= 10) {\n                return dateString.substring(0, 10);\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error formatting date: \" + e.getMessage(), e);\n        }\n        return dateString;\n    }\n\n    @Override\n    protected void onPause() {\n        super.onPause();\n        try {\n            if (binding.webView != null) {\n                binding.webView.onPause();\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in onPause: \" + e.getMessage(), e);\n        }\n    }\n\n    @Override\n    protected void onResume() {\n        super.onResume();\n        try {\n            if (binding.webView != null && !isDestroyed) {\n                binding.webView.onResume();\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in onResume: \" + e.getMessage(), e);\n        }\n    }\n\n    @Override\n    protected void onDestroy() {\n        isDestroyed = true;\n\n        try {\n            // Cleanup WebView\n            if (binding.webView != null) {\n                binding.webView.stopLoading();\n                binding.webView.clearCache(true);\n                binding.webView.clearHistory();\n                binding.webView.destroy();\n            }\n\n            // Cleanup executor service\n            if (executorService != null && !executorService.isShutdown()) {\n                executorService.shutdown();\n            }\n\n            // Clear handlers\n            if (mainHandler != null) {\n                mainHandler.removeCallbacksAndMessages(null);\n            }\n\n            // Clear binding\n            binding = null;\n\n            Log.d(TAG, \"DetailActivity destroyed and cleaned up\");\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error in onDestroy: \" + e.getMessage(), e);\n        }\n\n        super.onDestroy();\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/activity/DetailActivity.java b/app/src/main/java/com/example/snapnews/activity/DetailActivity.java
+--- a/app/src/main/java/com/example/snapnews/activity/DetailActivity.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/activity/DetailActivity.java	(date 1748504667098)
+@@ -9,18 +9,20 @@
+ import android.os.Handler;
+ import android.os.Looper;
+ import android.util.Log;
++import android.view.Menu;
++import android.view.MenuItem;
+ import android.view.View;
+ import android.webkit.WebView;
+ import android.webkit.WebViewClient;
+-import android.widget.ImageView;
+ import android.widget.Toast;
+ import androidx.appcompat.app.AppCompatActivity;
+ import com.bumptech.glide.Glide;
+ import com.example.snapnews.R;
+ import com.example.snapnews.database.ArticleDao;
+-import com.example.snapnews.database.NewsDatabase;
++import com.example.snapnews.database.NewsDatabaseHelper;
+ import com.example.snapnews.databinding.ActivityDetailBinding;
+ import com.example.snapnews.models.Article;
++import com.example.snapnews.models.Source;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ 
+@@ -28,13 +30,15 @@
+     private static final String TAG = "DetailActivity";
+     private ActivityDetailBinding binding;
+     private Article article;
++
++    // PERUBAHAN: Tambah database components untuk favorite functionality
+     private ArticleDao articleDao;
++    private NewsDatabaseHelper dbHelper;
+     private ExecutorService executorService;
+     private Handler mainHandler;
+     private boolean isDestroyed = false;
+-    private boolean isFavorite = false;
+-    private ImageView btnFavorite;
+ 
++    // Intent extras constants
+     public static final String EXTRA_ARTICLE_TITLE = "extra_article_title";
+     public static final String EXTRA_ARTICLE_DESCRIPTION = "extra_article_description";
+     public static final String EXTRA_ARTICLE_URL = "extra_article_url";
+@@ -50,7 +54,7 @@
+ 
+         try {
+             binding = ActivityDetailBinding.inflate(getLayoutInflater());
+-            setContentView(binding.getRoot());
++            super.setContentView(binding.getRoot());
+ 
+             // Initialize components
+             mainHandler = new Handler(Looper.getMainLooper());
+@@ -58,8 +62,9 @@
+             getArticleFromIntent();
+             setupUI();
+             setupButtons();
+-            setupFavoriteButton();
+-            checkFavoriteStatus();
++
++            // Load favorite status from database
++            loadFavoriteStatus();
+ 
+             Log.d(TAG, "DetailActivity created successfully");
+         } catch (Exception e) {
+@@ -70,9 +75,11 @@
+ 
+     private void initializeDatabase() {
+         try {
+-            NewsDatabase database = NewsDatabase.getDatabase(this);
+-            articleDao = database.articleDao();
++            // PERUBAHAN: Initialize SQLite database
++            dbHelper = NewsDatabaseHelper.getInstance(this);
++            articleDao = new ArticleDao(dbHelper);
+             executorService = Executors.newSingleThreadExecutor();
++            Log.d(TAG, "Database initialized successfully");
+         } catch (Exception e) {
+             Log.e(TAG, "Error initializing database: " + e.getMessage(), e);
+         }
+@@ -90,105 +97,60 @@
+             article.setContent(intent.getStringExtra(EXTRA_ARTICLE_CONTENT));
+             article.setAuthor(intent.getStringExtra(EXTRA_ARTICLE_AUTHOR));
+ 
++            // Handle source
++            String sourceName = intent.getStringExtra(EXTRA_ARTICLE_SOURCE);
++            if (sourceName != null) {
++                article.setSource(new Source(null, sourceName));
++            }
++
++            // Set timestamp if not set
++            if (article.getTimestamp() == 0) {
++                article.setTimestamp(System.currentTimeMillis());
++            }
++
+             Log.d(TAG, "Article data loaded: " + article.getTitle());
+         } catch (Exception e) {
+             Log.e(TAG, "Error getting article from intent: " + e.getMessage(), e);
+         }
+     }
+ 
+-    private void setupFavoriteButton() {
+-        try {
+-            btnFavorite = binding.toolbar.findViewById(R.id.btn_favorite);
+-            if (btnFavorite != null) {
+-                btnFavorite.setOnClickListener(v -> toggleFavorite());
+-            }
+-        } catch (Exception e) {
+-            Log.e(TAG, "Error setting up favorite button: " + e.getMessage(), e);
+-        }
+-    }
+-
+-    private void checkFavoriteStatus() {
++    private void loadFavoriteStatus() {
+         if (article == null || article.getUrl() == null) return;
+ 
+         executorService.execute(() -> {
+             try {
++                // Check if article exists in database and get its favorite status
+                 Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+-                boolean currentFavoriteStatus = existingArticle != null && existingArticle.isFavorite();
+ 
+                 mainHandler.post(() -> {
+-                    isFavorite = currentFavoriteStatus;
+-                    updateFavoriteIcon();
+-                });
+-            } catch (Exception e) {
+-                Log.e(TAG, "Error checking favorite status: " + e.getMessage(), e);
+-            }
+-        });
+-    }
+-
+-    private void toggleFavorite() {
+-        if (article == null || article.getUrl() == null) {
+-            Toast.makeText(this, "Cannot save this article", Toast.LENGTH_SHORT).show();
+-            return;
+-        }
+-
+-        // Toggle status immediately for UI responsiveness
+-        isFavorite = !isFavorite;
+-        updateFavoriteIcon();
+-
+-        // Update database in background
+-        executorService.execute(() -> {
+-            try {
+-                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+-
+-                if (existingArticle != null) {
+-                    // Update existing article
+-                    existingArticle.setFavorite(isFavorite);
+-                    articleDao.updateArticle(existingArticle);
+-                } else if (isFavorite) {
+-                    // Insert new article as favorite
+-                    article.setFavorite(true);
+-                    article.setTimestamp(System.currentTimeMillis());
+-                    articleDao.insertArticle(article);
+-                }
+-
+-                mainHandler.post(() -> {
+-                    String message = isFavorite ? "Added to favorites" : "Removed from favorites";
+-                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
++                    if (existingArticle != null) {
++                        article.setFavorite(existingArticle.isFavorite());
++                        article.setId(existingArticle.getId()); // Set ID for updates
++                        Log.d(TAG, "Loaded favorite status: " + article.isFavorite());
++                    } else {
++                        article.setFavorite(false);
++                        Log.d(TAG, "Article not in database, default favorite: false");
++                    }
++                    // Update UI after loading favorite status
++                    invalidateOptionsMenu();
+                 });
+-
+-                Log.d(TAG, "Favorite status updated: " + isFavorite);
+             } catch (Exception e) {
+-                Log.e(TAG, "Error updating favorite: " + e.getMessage(), e);
+-
+-                // Revert UI change if database update failed
+-                mainHandler.post(() -> {
+-                    isFavorite = !isFavorite;
+-                    updateFavoriteIcon();
+-                    Toast.makeText(DetailActivity.this, "Failed to update favorite", Toast.LENGTH_SHORT).show();
+-                });
++                Log.e(TAG, "Error loading favorite status", e);
+             }
+         });
+     }
+-
+-    private void updateFavoriteIcon() {
+-        try {
+-            if (btnFavorite != null) {
+-                int iconRes = isFavorite ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border;
+-                btnFavorite.setImageResource(iconRes);
+-
+-                // Add animation
+-                btnFavorite.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100)
+-                        .withEndAction(() -> btnFavorite.animate().scaleX(1f).scaleY(1f).setDuration(100));
+-            }
+-        } catch (Exception e) {
+-            Log.e(TAG, "Error updating favorite icon: " + e.getMessage(), e);
+-        }
+-    }
+ 
+     private void setupUI() {
+         if (article == null || isDestroyed) return;
+ 
+         try {
++            // Setup toolbar
++            setSupportActionBar(binding.toolbar);
++            if (getSupportActionBar() != null) {
++                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
++                getSupportActionBar().setTitle("News Detail");
++            }
++
+             // Set title
+             if (article.getTitle() != null) {
+                 binding.textTitle.setText(article.getTitle());
+@@ -260,7 +222,7 @@
+ 
+         try {
+             // Configure WebView settings
+-            binding.webView.getSettings().setJavaScriptEnabled(false); // Disable JS for stability
++            binding.webView.getSettings().setJavaScriptEnabled(false);
+             binding.webView.getSettings().setDomStorageEnabled(false);
+             binding.webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+ 
+@@ -326,10 +288,8 @@
+ 
+     private void setupButtons() {
+         try {
+-            // Use toolbar instead of button_back
+-            if (binding.toolbar != null) {
+-                binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
+-            }
++            // Setup toolbar navigation
++            binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
+ 
+             // Share button
+             if (binding.fabShare != null) {
+@@ -346,6 +306,91 @@
+         }
+     }
+ 
++    // PERUBAHAN: Implement options menu untuk favorite functionality
++    @Override
++    public boolean onCreateOptionsMenu(Menu menu) {
++        getMenuInflater().inflate(R.menu.detail_menu, menu);
++        return true;
++    }
++
++    @Override
++    public boolean onPrepareOptionsMenu(Menu menu) {
++        MenuItem favoriteItem = menu.findItem(R.id.action_favorite);
++        if (favoriteItem != null && article != null) {
++            // Update icon based on favorite status
++            if (article.isFavorite()) {
++                favoriteItem.setIcon(R.drawable.ic_favorite_filled);
++                favoriteItem.setTitle("Remove from favorites");
++            } else {
++                favoriteItem.setIcon(R.drawable.ic_favorite_border);
++                favoriteItem.setTitle("Add to favorites");
++            }
++        }
++        return super.onPrepareOptionsMenu(menu);
++    }
++
++    @Override
++    public boolean onOptionsItemSelected(MenuItem item) {
++        if (item.getItemId() == R.id.action_favorite) {
++            toggleFavorite();
++            return true;
++        } else if (item.getItemId() == android.R.id.home) {
++            safeFinish();
++            return true;
++        }
++        return super.onOptionsItemSelected(item);
++    }
++
++    // PERUBAHAN: Implement toggle favorite functionality
++    private void toggleFavorite() {
++        if (article == null) {
++            Log.w(TAG, "Cannot toggle favorite - article is null");
++            return;
++        }
++
++        Log.d(TAG, "Toggling favorite for article: " + article.getTitle());
++        Log.d(TAG, "Current favorite status: " + article.isFavorite());
++
++        executorService.execute(() -> {
++            try {
++                // Toggle favorite status
++                boolean newFavoriteStatus = !article.isFavorite();
++                article.setFavorite(newFavoriteStatus);
++
++                // Check if article exists in database
++                Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
++
++                if (existingArticle != null) {
++                    // Update existing article
++                    existingArticle.setFavorite(newFavoriteStatus);
++                    articleDao.updateArticle(existingArticle);
++                    Log.d(TAG, "Updated existing article favorite status: " + newFavoriteStatus);
++                } else {
++                    // Insert new article with favorite status
++                    articleDao.insertArticle(article);
++                    Log.d(TAG, "Inserted new article with favorite status: " + newFavoriteStatus);
++                }
++
++                // Update UI on main thread
++                mainHandler.post(() -> {
++                    invalidateOptionsMenu(); // Refresh menu icon
++
++                    String message = newFavoriteStatus ?
++                            "Added to favorites" : "Removed from favorites";
++                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
++
++                    Log.d(TAG, "Favorite toggle completed: " + message);
++                });
++
++            } catch (Exception e) {
++                Log.e(TAG, "Error toggling favorite", e);
++                mainHandler.post(() -> {
++                    Toast.makeText(DetailActivity.this, "Error updating favorite", Toast.LENGTH_SHORT).show();
++                });
++            }
++        });
++    }
++
+     private void shareArticleSafely() {
+         try {
+             Intent shareIntent = new Intent(Intent.ACTION_SEND);
+@@ -353,12 +398,9 @@
+             String shareText = (article.getTitle() != null ? article.getTitle() : "News Article") +
+                     "\n\n" + (article.getUrl() != null ? article.getUrl() : "");
+             shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+-
+-            // Add FLAG_ACTIVITY_NEW_TASK to prevent memory issues
+             shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+ 
+             startActivity(Intent.createChooser(shareIntent, "Share article"));
+-
+             Log.d(TAG, "Share intent started successfully");
+         } catch (Exception e) {
+             Log.e(TAG, "Error sharing article: " + e.getMessage(), e);
+@@ -366,7 +408,6 @@
+         }
+     }
+ 
+-    // MAIN FIX: Improved browser opening with proper cleanup
+     private void openInBrowserSafely() {
+         try {
+             if (article.getUrl() == null || article.getUrl().isEmpty()) {
+@@ -375,125 +416,22 @@
+             }
+ 
+             String url = article.getUrl();
+-
+-            // Ensure URL starts with http:// or https://
+             if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                 url = "https://" + url;
+             }
+ 
+-            Log.d(TAG, "Opening URL: " + url);
+-
+-            // Method 1: Try simple browser intent first
+-            if (openBrowserSimple(url)) {
+-                return;
+-            }
+-
+-            // Method 2: Try with explicit browser apps
+-            if (openBrowserExplicit(url)) {
+-                return;
+-            }
+-
+-            // Method 3: Try with chooser
+-            if (openBrowserWithChooser(url)) {
+-                return;
+-            }
+-
+-            // Method 4: Copy URL as fallback
+-            copyUrlToClipboard(url);
+-
+-        } catch (Exception e) {
+-            Log.e(TAG, "Error opening browser: " + e.getMessage(), e);
+-            Toast.makeText(this, "Unable to open browser", Toast.LENGTH_SHORT).show();
+-        }
+-    }
+-
+-    // Method 1: Simple browser intent
+-    private boolean openBrowserSimple(String url) {
+-        try {
+             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+-
+-            // Check if there's an app to handle this
+-            if (browserIntent.resolveActivity(getPackageManager()) != null) {
+-                startActivity(browserIntent);
+-                Log.d(TAG, "Opened with simple intent");
+-                return true;
+-            }
+-        } catch (Exception e) {
+-            Log.e(TAG, "Simple browser intent failed: " + e.getMessage());
+-        }
+-        return false;
+-    }
+-
+-    // Method 2: Try explicit browser apps
+-    private boolean openBrowserExplicit(String url) {
+-        try {
+-            // List of common browser package names
+-            String[] browsers = {
+-                    "com.android.chrome",           // Chrome
+-                    "com.android.browser",          // Default Android Browser
+-                    "org.mozilla.firefox",          // Firefox
+-                    "com.opera.browser",            // Opera
+-                    "com.UCMobile.intl",           // UC Browser
+-                    "com.microsoft.emmx",           // Edge
+-                    "com.brave.browser"            // Brave
+-            };
+-
+-            for (String browserPackage : browsers) {
+-                try {
+-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+-                    browserIntent.setPackage(browserPackage);
+-
+-                    if (browserIntent.resolveActivity(getPackageManager()) != null) {
+-                        startActivity(browserIntent);
+-                        Log.d(TAG, "Opened with browser: " + browserPackage);
+-                        return true;
+-                    }
+-                } catch (Exception e) {
+-                    // Try next browser
+-                    continue;
+-                }
++            if (browserIntent.resolveActivity(getPackageManager()) != null) {
++                startActivity(browserIntent);
++            } else {
++                Toast.makeText(this, "No browser app found", Toast.LENGTH_SHORT).show();
+             }
+-        } catch (Exception e) {
+-            Log.e(TAG, "Explicit browser intent failed: " + e.getMessage());
+-        }
+-        return false;
+-    }
+-
+-    // Method 3: Browser with chooser
+-    private boolean openBrowserWithChooser(String url) {
+-        try {
+-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+-            Intent chooserIntent = Intent.createChooser(browserIntent, "Open with");
+-
+-            if (chooserIntent.resolveActivity(getPackageManager()) != null) {
+-                startActivity(chooserIntent);
+-                Log.d(TAG, "Opened with chooser");
+-                return true;
+-            }
+-        } catch (Exception e) {
+-            Log.e(TAG, "Chooser intent failed: " + e.getMessage());
+-        }
+-        return false;
+-    }
+-
+-    // Method 4: Copy URL as fallback
+-    private void copyUrlToClipboard(String url) {
+-        try {
+-            android.content.ClipboardManager clipboard =
+-                    (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+-            android.content.ClipData clip = android.content.ClipData.newPlainText("News URL", url);
+-            clipboard.setPrimaryClip(clip);
+-
+-            Toast.makeText(this, "No browser found. URL copied to clipboard: " + url,
+-                    Toast.LENGTH_LONG).show();
+-            Log.d(TAG, "URL copied to clipboard as fallback");
+         } catch (Exception e) {
+-            Log.e(TAG, "Failed to copy URL: " + e.getMessage());
+-            Toast.makeText(this, "Unable to open browser or copy URL", Toast.LENGTH_SHORT).show();
++            Log.e(TAG, "Error opening browser: " + e.getMessage(), e);
++            Toast.makeText(this, "Unable to open browser", Toast.LENGTH_SHORT).show();
+         }
+     }
+ 
+-    // CRITICAL: Proper WebView cleanup
+     private void cleanupWebView() {
+         try {
+             if (binding.webView != null) {
+Index: app/src/main/java/com/example/snapnews/database/NewsDatabaseHelper.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.database;\n\nimport android.content.Context;\nimport android.database.sqlite.SQLiteDatabase;\nimport android.database.sqlite.SQLiteOpenHelper;\nimport android.util.Log;\n\npublic class NewsDatabaseHelper extends SQLiteOpenHelper {\n    private static final String TAG = \"NewsDatabaseHelper\";\n\n    // Database Info\n    private static final String DATABASE_NAME = \"news_database.db\";\n    private static final int DATABASE_VERSION = 1;\n\n    // Table Names\n    public static final String TABLE_ARTICLES = \"articles\";\n\n    // Article Table Columns\n    public static final String COLUMN_ID = \"id\";\n    public static final String COLUMN_TITLE = \"title\";\n    public static final String COLUMN_DESCRIPTION = \"description\";\n    public static final String COLUMN_URL = \"url\";\n    public static final String COLUMN_URL_TO_IMAGE = \"urlToImage\";\n    public static final String COLUMN_PUBLISHED_AT = \"publishedAt\";\n    public static final String COLUMN_CONTENT = \"content\";\n    public static final String COLUMN_AUTHOR = \"author\";\n    public static final String COLUMN_SOURCE_ID = \"sourceId\";\n    public static final String COLUMN_SOURCE_NAME = \"sourceName\";\n    public static final String COLUMN_IS_FAVORITE = \"isFavorite\";\n    public static final String COLUMN_TIMESTAMP = \"timestamp\";\n\n    // Create Articles Table SQL\n    private static final String CREATE_ARTICLES_TABLE =\n            \"CREATE TABLE \" + TABLE_ARTICLES + \" (\" +\n                    COLUMN_ID + \" INTEGER PRIMARY KEY AUTOINCREMENT, \" +\n                    COLUMN_TITLE + \" TEXT, \" +\n                    COLUMN_DESCRIPTION + \" TEXT, \" +\n                    COLUMN_URL + \" TEXT UNIQUE, \" + // URL sebagai unique identifier\n                    COLUMN_URL_TO_IMAGE + \" TEXT, \" +\n                    COLUMN_PUBLISHED_AT + \" TEXT, \" +\n                    COLUMN_CONTENT + \" TEXT, \" +\n                    COLUMN_AUTHOR + \" TEXT, \" +\n                    COLUMN_SOURCE_ID + \" TEXT, \" +\n                    COLUMN_SOURCE_NAME + \" TEXT, \" +\n                    COLUMN_IS_FAVORITE + \" INTEGER DEFAULT 0, \" +\n                    COLUMN_TIMESTAMP + \" INTEGER DEFAULT 0\" +\n                    \")\";\n\n    // Singleton instance\n    private static NewsDatabaseHelper sInstance;\n\n    // Private constructor untuk singleton\n    private NewsDatabaseHelper(Context context) {\n        super(context, DATABASE_NAME, null, DATABASE_VERSION);\n        Log.d(TAG, \"NewsDatabaseHelper constructor called\");\n    }\n\n    public static synchronized NewsDatabaseHelper getInstance(Context context) {\n        if (sInstance == null) {\n            sInstance = new NewsDatabaseHelper(context.getApplicationContext());\n            Log.d(TAG, \"NewsDatabaseHelper instance created\");\n        }\n        return sInstance;\n    }\n\n    @Override\n    public void onCreate(SQLiteDatabase db) {\n        Log.d(TAG, \"Creating database tables\");\n        try {\n            db.execSQL(CREATE_ARTICLES_TABLE);\n            Log.d(TAG, \"Articles table created successfully\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error creating tables\", e);\n        }\n    }\n\n    @Override\n    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {\n        Log.d(TAG, \"Upgrading database from version \" + oldVersion + \" to \" + newVersion);\n\n        if (oldVersion != newVersion) {\n            try {\n                // Drop existing tables\n                db.execSQL(\"DROP TABLE IF EXISTS \" + TABLE_ARTICLES);\n                Log.d(TAG, \"Old tables dropped\");\n\n                // Recreate tables\n                onCreate(db);\n                Log.d(TAG, \"Tables recreated successfully\");\n            } catch (Exception e) {\n                Log.e(TAG, \"Error upgrading database\", e);\n            }\n        }\n    }\n\n    @Override\n    public void onOpen(SQLiteDatabase db) {\n        super.onOpen(db);\n        Log.d(TAG, \"Database opened\");\n\n        if (!db.isReadOnly()) {\n            try {\n                // Enable foreign key constraints\n                db.execSQL(\"PRAGMA foreign_keys=ON;\");\n                Log.d(TAG, \"Foreign keys enabled\");\n            } catch (Exception e) {\n                Log.e(TAG, \"Error enabling foreign keys\", e);\n            }\n        }\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/database/NewsDatabaseHelper.java b/app/src/main/java/com/example/snapnews/database/NewsDatabaseHelper.java
+--- a/app/src/main/java/com/example/snapnews/database/NewsDatabaseHelper.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/database/NewsDatabaseHelper.java	(date 1748388117138)
+@@ -35,7 +35,7 @@
+                     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                     COLUMN_TITLE + " TEXT, " +
+                     COLUMN_DESCRIPTION + " TEXT, " +
+-                    COLUMN_URL + " TEXT UNIQUE, " + // URL sebagai unique identifier
++                    COLUMN_URL + " TEXT UNIQUE, " +
+                     COLUMN_URL_TO_IMAGE + " TEXT, " +
+                     COLUMN_PUBLISHED_AT + " TEXT, " +
+                     COLUMN_CONTENT + " TEXT, " +
+Index: app/src/main/java/com/example/snapnews/database/ArticleDao.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.database;\n\nimport android.content.ContentValues;\nimport android.database.Cursor;\nimport android.database.sqlite.SQLiteDatabase;\nimport android.util.Log;\nimport com.example.snapnews.models.Article;\nimport com.example.snapnews.models.Source;\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class ArticleDao {\n    private static final String TAG = \"ArticleDao\";\n    private final NewsDatabaseHelper dbHelper;\n\n    public ArticleDao(NewsDatabaseHelper dbHelper) {\n        this.dbHelper = dbHelper;\n        Log.d(TAG, \"ArticleDao initialized with NewsDatabaseHelper\");\n    }\n\n    // GET ALL ARTICLES\n    public List<Article> getAllArticles() {\n        List<Article> articles = new ArrayList<>();\n        SQLiteDatabase db = null;\n        Cursor cursor = null;\n\n        try {\n            db = dbHelper.getReadableDatabase();\n            String query = \"SELECT * FROM \" + NewsDatabaseHelper.TABLE_ARTICLES +\n                    \" ORDER BY \" + NewsDatabaseHelper.COLUMN_TIMESTAMP + \" DESC\";\n\n            cursor = db.rawQuery(query, null);\n            Log.d(TAG, \"getAllArticles - Found \" + cursor.getCount() + \" articles\");\n\n            if (cursor.moveToFirst()) {\n                do {\n                    Article article = cursorToArticle(cursor);\n                    if (article != null) {\n                        articles.add(article);\n                    }\n                } while (cursor.moveToNext());\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error getting all articles\", e);\n        } finally {\n            if (cursor != null) {\n                cursor.close();\n            }\n            if (db != null) {\n                db.close();\n            }\n        }\n\n        return articles;\n    }\n\n    // GET FAVORITE ARTICLES\n    public List<Article> getFavoriteArticles() {\n        List<Article> articles = new ArrayList<>();\n        SQLiteDatabase db = null;\n        Cursor cursor = null;\n\n        try {\n            db = dbHelper.getReadableDatabase();\n            String query = \"SELECT * FROM \" + NewsDatabaseHelper.TABLE_ARTICLES +\n                    \" WHERE \" + NewsDatabaseHelper.COLUMN_IS_FAVORITE + \" = 1\" +\n                    \" ORDER BY \" + NewsDatabaseHelper.COLUMN_TIMESTAMP + \" DESC\";\n\n            cursor = db.rawQuery(query, null);\n            Log.d(TAG, \"getFavoriteArticles - Found \" + cursor.getCount() + \" favorite articles\");\n\n            if (cursor.moveToFirst()) {\n                do {\n                    Article article = cursorToArticle(cursor);\n                    if (article != null) {\n                        articles.add(article);\n                    }\n                } while (cursor.moveToNext());\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error getting favorite articles\", e);\n        } finally {\n            if (cursor != null) {\n                cursor.close();\n            }\n            if (db != null) {\n                db.close();\n            }\n        }\n\n        return articles;\n    }\n\n    // SEARCH ARTICLES\n    public List<Article> searchArticles(String query) {\n        List<Article> articles = new ArrayList<>();\n        SQLiteDatabase db = null;\n        Cursor cursor = null;\n\n        try {\n            db = dbHelper.getReadableDatabase();\n            String sqlQuery = \"SELECT * FROM \" + NewsDatabaseHelper.TABLE_ARTICLES +\n                    \" WHERE \" + NewsDatabaseHelper.COLUMN_TITLE + \" LIKE ? OR \" +\n                    NewsDatabaseHelper.COLUMN_DESCRIPTION + \" LIKE ?\" +\n                    \" ORDER BY \" + NewsDatabaseHelper.COLUMN_TIMESTAMP + \" DESC\";\n\n            String searchPattern = \"%\" + query + \"%\";\n            String[] selectionArgs = {searchPattern, searchPattern};\n\n            cursor = db.rawQuery(sqlQuery, selectionArgs);\n            Log.d(TAG, \"searchArticles - Found \" + cursor.getCount() + \" articles for query: \" + query);\n\n            if (cursor.moveToFirst()) {\n                do {\n                    Article article = cursorToArticle(cursor);\n                    if (article != null) {\n                        articles.add(article);\n                    }\n                } while (cursor.moveToNext());\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error searching articles\", e);\n        } finally {\n            if (cursor != null) {\n                cursor.close();\n            }\n            if (db != null) {\n                db.close();\n            }\n        }\n\n        return articles;\n    }\n\n    // INSERT ARTICLE\n    public void insertArticle(Article article) {\n        SQLiteDatabase db = null;\n\n        try {\n            db = dbHelper.getWritableDatabase();\n            ContentValues values = articleToContentValues(article);\n\n            // Use INSERT OR REPLACE untuk handle conflict\n            long result = db.insertWithOnConflict(\n                    NewsDatabaseHelper.TABLE_ARTICLES,\n                    null,\n                    values,\n                    SQLiteDatabase.CONFLICT_REPLACE\n            );\n\n            if (result != -1) {\n                Log.d(TAG, \"Article inserted successfully with ID: \" + result);\n            } else {\n                Log.e(TAG, \"Failed to insert article\");\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error inserting article\", e);\n        } finally {\n            if (db != null) {\n                db.close();\n            }\n        }\n    }\n\n    // INSERT MULTIPLE ARTICLES\n    public void insertArticles(List<Article> articles) {\n        SQLiteDatabase db = null;\n\n        try {\n            db = dbHelper.getWritableDatabase();\n            db.beginTransaction();\n\n            for (Article article : articles) {\n                ContentValues values = articleToContentValues(article);\n                db.insertWithOnConflict(\n                        NewsDatabaseHelper.TABLE_ARTICLES,\n                        null,\n                        values,\n                        SQLiteDatabase.CONFLICT_REPLACE\n                );\n            }\n\n            db.setTransactionSuccessful();\n            Log.d(TAG, \"Successfully inserted \" + articles.size() + \" articles\");\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error inserting articles\", e);\n        } finally {\n            if (db != null) {\n                db.endTransaction();\n                db.close();\n            }\n        }\n    }\n\n    // UPDATE ARTICLE\n    public void updateArticle(Article article) {\n        SQLiteDatabase db = null;\n\n        try {\n            db = dbHelper.getWritableDatabase();\n            ContentValues values = articleToContentValues(article);\n\n            int rowsAffected = db.update(\n                    NewsDatabaseHelper.TABLE_ARTICLES,\n                    values,\n                    NewsDatabaseHelper.COLUMN_URL + \" = ?\",\n                    new String[]{article.getUrl()}\n            );\n\n            Log.d(TAG, \"Updated \" + rowsAffected + \" articles\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error updating article\", e);\n        } finally {\n            if (db != null) {\n                db.close();\n            }\n        }\n    }\n\n    // DELETE ARTICLE\n    public void deleteArticle(Article article) {\n        SQLiteDatabase db = null;\n\n        try {\n            db = dbHelper.getWritableDatabase();\n            int rowsDeleted = db.delete(\n                    NewsDatabaseHelper.TABLE_ARTICLES,\n                    NewsDatabaseHelper.COLUMN_URL + \" = ?\",\n                    new String[]{article.getUrl()}\n            );\n\n            Log.d(TAG, \"Deleted \" + rowsDeleted + \" articles\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error deleting article\", e);\n        } finally {\n            if (db != null) {\n                db.close();\n            }\n        }\n    }\n\n    // DELETE NON-FAVORITE ARTICLES\n    public void deleteNonFavoriteArticles() {\n        SQLiteDatabase db = null;\n\n        try {\n            db = dbHelper.getWritableDatabase();\n            int rowsDeleted = db.delete(\n                    NewsDatabaseHelper.TABLE_ARTICLES,\n                    NewsDatabaseHelper.COLUMN_IS_FAVORITE + \" = 0\",\n                    null\n            );\n\n            Log.d(TAG, \"Deleted \" + rowsDeleted + \" non-favorite articles\");\n        } catch (Exception e) {\n            Log.e(TAG, \"Error deleting non-favorite articles\", e);\n        } finally {\n            if (db != null) {\n                db.close();\n            }\n        }\n    }\n\n    // GET ARTICLE BY URL\n    public Article getArticleByUrl(String url) {\n        SQLiteDatabase db = null;\n        Cursor cursor = null;\n\n        try {\n            db = dbHelper.getReadableDatabase();\n            String query = \"SELECT * FROM \" + NewsDatabaseHelper.TABLE_ARTICLES +\n                    \" WHERE \" + NewsDatabaseHelper.COLUMN_URL + \" = ? LIMIT 1\";\n\n            cursor = db.rawQuery(query, new String[]{url});\n\n            if (cursor.moveToFirst()) {\n                Article article = cursorToArticle(cursor);\n                Log.d(TAG, \"Found article by URL: \" + url);\n                return article;\n            }\n        } catch (Exception e) {\n            Log.e(TAG, \"Error getting article by URL\", e);\n        } finally {\n            if (cursor != null) {\n                cursor.close();\n            }\n            if (db != null) {\n                db.close();\n            }\n        }\n\n        return null;\n    }\n\n    // HELPER: Convert Cursor to Article object\n    private Article cursorToArticle(Cursor cursor) {\n        try {\n            Article article = new Article();\n\n            article.setId(cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_ID)));\n            article.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_TITLE)));\n            article.setDescription(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_DESCRIPTION)));\n            article.setUrl(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_URL)));\n            article.setUrlToImage(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_URL_TO_IMAGE)));\n            article.setPublishedAt(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_PUBLISHED_AT)));\n            article.setContent(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_CONTENT)));\n            article.setAuthor(cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_AUTHOR)));\n\n            // Create Source object\n            String sourceId = cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_SOURCE_ID));\n            String sourceName = cursor.getString(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_SOURCE_NAME));\n            if (sourceId != null || sourceName != null) {\n                Source source = new Source(sourceId, sourceName);\n                article.setSource(source);\n            }\n\n            article.setFavorite(cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_IS_FAVORITE)) == 1);\n            article.setTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_TIMESTAMP)));\n\n            return article;\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error converting cursor to article\", e);\n            return null;\n        }\n    }\n\n    // HELPER: Convert Article to ContentValues\n    private ContentValues articleToContentValues(Article article) {\n        ContentValues values = new ContentValues();\n\n        values.put(NewsDatabaseHelper.COLUMN_TITLE, article.getTitle());\n        values.put(NewsDatabaseHelper.COLUMN_DESCRIPTION, article.getDescription());\n        values.put(NewsDatabaseHelper.COLUMN_URL, article.getUrl());\n        values.put(NewsDatabaseHelper.COLUMN_URL_TO_IMAGE, article.getUrlToImage());\n        values.put(NewsDatabaseHelper.COLUMN_PUBLISHED_AT, article.getPublishedAt());\n        values.put(NewsDatabaseHelper.COLUMN_CONTENT, article.getContent());\n        values.put(NewsDatabaseHelper.COLUMN_AUTHOR, article.getAuthor());\n\n        // Handle Source object - flatten to separate columns\n        if (article.getSource() != null) {\n            values.put(NewsDatabaseHelper.COLUMN_SOURCE_ID, article.getSource().getId());\n            values.put(NewsDatabaseHelper.COLUMN_SOURCE_NAME, article.getSource().getName());\n        } else {\n            values.putNull(NewsDatabaseHelper.COLUMN_SOURCE_ID);\n            values.putNull(NewsDatabaseHelper.COLUMN_SOURCE_NAME);\n        }\n\n        values.put(NewsDatabaseHelper.COLUMN_IS_FAVORITE, article.isFavorite() ? 1 : 0);\n        values.put(NewsDatabaseHelper.COLUMN_TIMESTAMP, article.getTimestamp());\n\n        return values;\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/database/ArticleDao.java b/app/src/main/java/com/example/snapnews/database/ArticleDao.java
+--- a/app/src/main/java/com/example/snapnews/database/ArticleDao.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/database/ArticleDao.java	(date 1748417886032)
+@@ -132,15 +132,24 @@
+         return articles;
+     }
+ 
+-    // INSERT ARTICLE
++    // INSERT ARTICLE - PRESERVE EXISTING FAVORITE STATUS
+     public void insertArticle(Article article) {
+         SQLiteDatabase db = null;
+ 
+         try {
+             db = dbHelper.getWritableDatabase();
++
++            // CRITICAL: Check if article already exists and preserve favorite status
++            Article existingArticle = getArticleByUrlInternal(db, article.getUrl());
++            if (existingArticle != null) {
++                // Preserve favorite status from existing article
++                article.setFavorite(existingArticle.isFavorite());
++                article.setId(existingArticle.getId());
++                Log.d(TAG, "Preserving favorite status: " + article.isFavorite() + " for article: " + article.getTitle());
++            }
++
+             ContentValues values = articleToContentValues(article);
+ 
+-            // Use INSERT OR REPLACE untuk handle conflict
+             long result = db.insertWithOnConflict(
+                     NewsDatabaseHelper.TABLE_ARTICLES,
+                     null,
+@@ -149,7 +158,7 @@
+             );
+ 
+             if (result != -1) {
+-                Log.d(TAG, "Article inserted successfully with ID: " + result);
++                Log.d(TAG, "Article inserted/updated successfully with ID: " + result);
+             } else {
+                 Log.e(TAG, "Failed to insert article");
+             }
+@@ -162,7 +171,7 @@
+         }
+     }
+ 
+-    // INSERT MULTIPLE ARTICLES
++    // INSERT MULTIPLE ARTICLES - PRESERVE EXISTING FAVORITE STATUS
+     public void insertArticles(List<Article> articles) {
+         SQLiteDatabase db = null;
+ 
+@@ -171,6 +180,14 @@
+             db.beginTransaction();
+ 
+             for (Article article : articles) {
++                // CRITICAL: Check and preserve favorite status for each article
++                Article existingArticle = getArticleByUrlInternal(db, article.getUrl());
++                if (existingArticle != null) {
++                    // Preserve favorite status
++                    article.setFavorite(existingArticle.isFavorite());
++                    Log.d(TAG, "Preserving favorite status: " + article.isFavorite() + " for: " + article.getTitle());
++                }
++
+                 ContentValues values = articleToContentValues(article);
+                 db.insertWithOnConflict(
+                         NewsDatabaseHelper.TABLE_ARTICLES,
+@@ -181,7 +198,7 @@
+             }
+ 
+             db.setTransactionSuccessful();
+-            Log.d(TAG, "Successfully inserted " + articles.size() + " articles");
++            Log.d(TAG, "Successfully inserted " + articles.size() + " articles with preserved favorites");
+ 
+         } catch (Exception e) {
+             Log.e(TAG, "Error inserting articles", e);
+@@ -193,7 +210,7 @@
+         }
+     }
+ 
+-    // UPDATE ARTICLE
++    // UPDATE ARTICLE - SPECIFICALLY FOR FAVORITE TOGGLE
+     public void updateArticle(Article article) {
+         SQLiteDatabase db = null;
+ 
+@@ -208,7 +225,7 @@
+                     new String[]{article.getUrl()}
+             );
+ 
+-            Log.d(TAG, "Updated " + rowsAffected + " articles");
++            Log.d(TAG, "Updated " + rowsAffected + " articles - Favorite status: " + article.isFavorite());
+         } catch (Exception e) {
+             Log.e(TAG, "Error updating article", e);
+         } finally {
+@@ -217,6 +234,32 @@
+             }
+         }
+     }
++
++    // UPDATE FAVORITE STATUS ONLY
++    public void updateFavoriteStatus(String url, boolean isFavorite) {
++        SQLiteDatabase db = null;
++
++        try {
++            db = dbHelper.getWritableDatabase();
++            ContentValues values = new ContentValues();
++            values.put(NewsDatabaseHelper.COLUMN_IS_FAVORITE, isFavorite ? 1 : 0);
++
++            int rowsAffected = db.update(
++                    NewsDatabaseHelper.TABLE_ARTICLES,
++                    values,
++                    NewsDatabaseHelper.COLUMN_URL + " = ?",
++                    new String[]{url}
++            );
++
++            Log.d(TAG, "Updated favorite status for " + rowsAffected + " articles to: " + isFavorite);
++        } catch (Exception e) {
++            Log.e(TAG, "Error updating favorite status", e);
++        } finally {
++            if (db != null) {
++                db.close();
++            }
++        }
++    }
+ 
+     // DELETE ARTICLE
+     public void deleteArticle(Article article) {
+@@ -240,19 +283,32 @@
+         }
+     }
+ 
+-    // DELETE NON-FAVORITE ARTICLES
++    // DELETE NON-FAVORITE ARTICLES - IMPROVED VERSION
+     public void deleteNonFavoriteArticles() {
+         SQLiteDatabase db = null;
+ 
+         try {
+             db = dbHelper.getWritableDatabase();
++
++            // Get count of favorites before deletion for logging
++            Cursor favoriteCursor = db.rawQuery(
++                    "SELECT COUNT(*) FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
++                            " WHERE " + NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 1", null);
++
++            int favoriteCount = 0;
++            if (favoriteCursor.moveToFirst()) {
++                favoriteCount = favoriteCursor.getInt(0);
++            }
++            favoriteCursor.close();
++
++            // Delete non-favorites
+             int rowsDeleted = db.delete(
+                     NewsDatabaseHelper.TABLE_ARTICLES,
+                     NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 0",
+                     null
+             );
+ 
+-            Log.d(TAG, "Deleted " + rowsDeleted + " non-favorite articles");
++            Log.d(TAG, "Deleted " + rowsDeleted + " non-favorite articles, preserved " + favoriteCount + " favorites");
+         } catch (Exception e) {
+             Log.e(TAG, "Error deleting non-favorite articles", e);
+         } finally {
+@@ -262,13 +318,24 @@
+         }
+     }
+ 
+-    // GET ARTICLE BY URL
++    // GET ARTICLE BY URL - PUBLIC METHOD
+     public Article getArticleByUrl(String url) {
+         SQLiteDatabase db = null;
++        try {
++            db = dbHelper.getReadableDatabase();
++            return getArticleByUrlInternal(db, url);
++        } finally {
++            if (db != null) {
++                db.close();
++            }
++        }
++    }
++
++    // GET ARTICLE BY URL - INTERNAL METHOD (REUSES DB CONNECTION)
++    private Article getArticleByUrlInternal(SQLiteDatabase db, String url) {
+         Cursor cursor = null;
+ 
+         try {
+-            db = dbHelper.getReadableDatabase();
+             String query = "SELECT * FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
+                     " WHERE " + NewsDatabaseHelper.COLUMN_URL + " = ? LIMIT 1";
+ 
+@@ -276,7 +343,7 @@
+ 
+             if (cursor.moveToFirst()) {
+                 Article article = cursorToArticle(cursor);
+-                Log.d(TAG, "Found article by URL: " + url);
++                Log.d(TAG, "Found article by URL: " + url + ", Favorite: " + (article != null ? article.isFavorite() : "null"));
+                 return article;
+             }
+         } catch (Exception e) {
+@@ -285,9 +352,6 @@
+             if (cursor != null) {
+                 cursor.close();
+             }
+-            if (db != null) {
+-                db.close();
+-            }
+         }
+ 
+         return null;
+@@ -315,7 +379,10 @@
+                 article.setSource(source);
+             }
+ 
+-            article.setFavorite(cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_IS_FAVORITE)) == 1);
++            // CRITICAL: Properly set favorite status
++            int favoriteInt = cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_IS_FAVORITE));
++            article.setFavorite(favoriteInt == 1);
++
+             article.setTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_TIMESTAMP)));
+ 
+             return article;
+@@ -347,9 +414,39 @@
+             values.putNull(NewsDatabaseHelper.COLUMN_SOURCE_NAME);
+         }
+ 
++        // CRITICAL: Properly save favorite status
+         values.put(NewsDatabaseHelper.COLUMN_IS_FAVORITE, article.isFavorite() ? 1 : 0);
+         values.put(NewsDatabaseHelper.COLUMN_TIMESTAMP, article.getTimestamp());
+ 
+         return values;
+     }
++
++    // DEBUG: Method to check favorite count
++    public int getFavoriteCount() {
++        SQLiteDatabase db = null;
++        Cursor cursor = null;
++
++        try {
++            db = dbHelper.getReadableDatabase();
++            cursor = db.rawQuery("SELECT COUNT(*) FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
++                    " WHERE " + NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 1", null);
++
++            if (cursor.moveToFirst()) {
++                int count = cursor.getInt(0);
++                Log.d(TAG, "Current favorite count: " + count);
++                return count;
++            }
++        } catch (Exception e) {
++            Log.e(TAG, "Error getting favorite count", e);
++        } finally {
++            if (cursor != null) {
++                cursor.close();
++            }
++            if (db != null) {
++                db.close();
++            }
++        }
++
++        return 0;
++    }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/example/snapnews/fragment/FavoritesFragment.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.fragment;\n\nimport android.os.Bundle;\nimport android.os.Handler;\nimport android.os.Looper;\nimport android.view.LayoutInflater;\nimport android.view.View;\nimport android.view.ViewGroup;\nimport androidx.annotation.NonNull;\nimport androidx.annotation.Nullable;\nimport androidx.fragment.app.Fragment;\nimport androidx.recyclerview.widget.LinearLayoutManager;\nimport com.example.snapnews.adapter.NewsAdapter;\nimport com.example.snapnews.database.ArticleDao;\nimport com.example.snapnews.database.NewsDatabase;\nimport com.example.snapnews.databinding.FragmentFavoritesBinding;\nimport com.example.snapnews.models.Article;\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\n\npublic class FavoritesFragment extends Fragment {\n    private FragmentFavoritesBinding binding;\n    private NewsAdapter newsAdapter;\n    private List<Article> favoriteArticles = new ArrayList<>();\n    private ArticleDao articleDao;\n    private ExecutorService executorService;\n    private Handler mainHandler;\n\n    @Override\n    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {\n        binding = FragmentFavoritesBinding.inflate(inflater, container, false);\n        return binding.getRoot();\n    }\n\n    @Override\n    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {\n        super.onViewCreated(view, savedInstanceState);\n\n        initializeComponents();\n        setupRecyclerView();\n        loadFavorites();\n    }\n\n    private void initializeComponents() {\n        NewsDatabase database = NewsDatabase.getDatabase(requireContext());\n        articleDao = database.articleDao();\n        executorService = Executors.newFixedThreadPool(1);\n        mainHandler = new Handler(Looper.getMainLooper());\n    }\n\n    private void setupRecyclerView() {\n        newsAdapter = new NewsAdapter(favoriteArticles, article -> {\n            if (getActivity() != null) {\n                ((com.example.snapnews.activity.MainActivity) getActivity()).navigateToDetail(article);\n            }\n        });\n\n        binding.recyclerViewFavorites.setLayoutManager(new LinearLayoutManager(getContext()));\n        binding.recyclerViewFavorites.setAdapter(newsAdapter);\n    }\n\n    private void loadFavorites() {\n        showLoading();\n\n        executorService.execute(() -> {\n            List<Article> favorites = articleDao.getFavoriteArticles();\n\n            mainHandler.post(() -> {\n                hideLoading();\n\n                favoriteArticles.clear();\n                if (favorites != null) {\n                    favoriteArticles.addAll(favorites);\n                }\n                newsAdapter.notifyDataSetChanged();\n\n                if (favoriteArticles.isEmpty()) {\n                    showEmptyState();\n                } else {\n                    showContent();\n                }\n            });\n        });\n    }\n\n    private void showLoading() {\n        binding.progressBar.setVisibility(View.VISIBLE);\n        binding.recyclerViewFavorites.setVisibility(View.GONE);\n        binding.layoutEmpty.setVisibility(View.GONE);\n    }\n\n    private void hideLoading() {\n        binding.progressBar.setVisibility(View.GONE);\n    }\n\n    private void showContent() {\n        binding.recyclerViewFavorites.setVisibility(View.VISIBLE);\n        binding.layoutEmpty.setVisibility(View.GONE);\n    }\n\n    private void showEmptyState() {\n        binding.recyclerViewFavorites.setVisibility(View.GONE);\n        binding.layoutEmpty.setVisibility(View.VISIBLE);\n    }\n\n    @Override\n    public void onResume() {\n        super.onResume();\n        // Refresh favorites when fragment becomes visible\n        loadFavorites();\n    }\n\n    @Override\n    public void onDestroy() {\n        super.onDestroy();\n        if (executorService != null && !executorService.isShutdown()) {\n            executorService.shutdown();\n        }\n        binding = null;\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/fragment/FavoritesFragment.java b/app/src/main/java/com/example/snapnews/fragment/FavoritesFragment.java
+--- a/app/src/main/java/com/example/snapnews/fragment/FavoritesFragment.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/fragment/FavoritesFragment.java	(date 1748388365342)
+@@ -3,6 +3,7 @@
+ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Looper;
++import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -12,7 +13,7 @@
+ import androidx.recyclerview.widget.LinearLayoutManager;
+ import com.example.snapnews.adapter.NewsAdapter;
+ import com.example.snapnews.database.ArticleDao;
+-import com.example.snapnews.database.NewsDatabase;
++import com.example.snapnews.database.NewsDatabaseHelper;
+ import com.example.snapnews.databinding.FragmentFavoritesBinding;
+ import com.example.snapnews.models.Article;
+ import java.util.ArrayList;
+@@ -21,10 +22,12 @@
+ import java.util.concurrent.Executors;
+ 
+ public class FavoritesFragment extends Fragment {
++    private static final String TAG = "FavoritesFragment";
+     private FragmentFavoritesBinding binding;
+     private NewsAdapter newsAdapter;
+     private List<Article> favoriteArticles = new ArrayList<>();
+     private ArticleDao articleDao;
++    private NewsDatabaseHelper dbHelper;
+     private ExecutorService executorService;
+     private Handler mainHandler;
+ 
+@@ -44,10 +47,13 @@
+     }
+ 
+     private void initializeComponents() {
+-        NewsDatabase database = NewsDatabase.getDatabase(requireContext());
+-        articleDao = database.articleDao();
++        dbHelper = NewsDatabaseHelper.getInstance(requireContext());
++        articleDao = new ArticleDao(dbHelper);
++
+         executorService = Executors.newFixedThreadPool(1);
+         mainHandler = new Handler(Looper.getMainLooper());
++
++        Log.d(TAG, "Components initialized with SQLite database");
+     }
+ 
+     private void setupRecyclerView() {
+@@ -59,55 +65,105 @@
+ 
+         binding.recyclerViewFavorites.setLayoutManager(new LinearLayoutManager(getContext()));
+         binding.recyclerViewFavorites.setAdapter(newsAdapter);
++
++        Log.d(TAG, "RecyclerView setup completed");
+     }
+ 
+     private void loadFavorites() {
+         showLoading();
+ 
+         executorService.execute(() -> {
+-            List<Article> favorites = articleDao.getFavoriteArticles();
++            Log.d(TAG, "Loading favorite articles from SQLite database");
++
++            try {
++                List<Article> favorites = articleDao.getFavoriteArticles();
+ 
+-            mainHandler.post(() -> {
+-                hideLoading();
++                mainHandler.post(() -> {
++                    hideLoading();
+ 
+-                favoriteArticles.clear();
+-                if (favorites != null) {
+-                    favoriteArticles.addAll(favorites);
+-                }
+-                newsAdapter.notifyDataSetChanged();
+-
+-                if (favoriteArticles.isEmpty()) {
++                    favoriteArticles.clear();
++                    if (favorites != null && !favorites.isEmpty()) {
++                        Log.d(TAG, "Loaded " + favorites.size() + " favorite articles from SQLite");
++                        favoriteArticles.addAll(favorites);
++                        newsAdapter.notifyDataSetChanged();
++                        showContent();
++                    } else {
++                        Log.d(TAG, "No favorite articles found in SQLite database");
++                        showEmptyState();
++                    }
++                });
++
++            } catch (Exception e) {
++                Log.e(TAG, "Error loading favorite articles from SQLite", e);
++                mainHandler.post(() -> {
++                    hideLoading();
+                     showEmptyState();
+-                } else {
+-                    showContent();
+-                }
+-            });
++                });
++            }
++        });
++    }
++
++    // Method untuk menambah/menghapus favorite (dipanggil dari DetailActivity)
++    public void toggleFavorite(Article article) {
++        executorService.execute(() -> {
++            try {
++                Log.d(TAG, "Toggling favorite status for article: " + article.getTitle());
++
++                // Toggle status favorite
++                article.setFavorite(!article.isFavorite());
++
++                // Update di database SQLite
++                articleDao.updateArticle(article);
++
++                Log.d(TAG, "Article favorite status updated in SQLite: " + article.isFavorite());
++
++                // Refresh tampilan di main thread
++                mainHandler.post(() -> {
++                    loadFavorites();
++                });
++
++            } catch (Exception e) {
++                Log.e(TAG, "Error toggling favorite status in SQLite", e);
++            }
+         });
+     }
+ 
+     private void showLoading() {
+-        binding.progressBar.setVisibility(View.VISIBLE);
+-        binding.recyclerViewFavorites.setVisibility(View.GONE);
+-        binding.layoutEmpty.setVisibility(View.GONE);
++        Log.d(TAG, "Showing loading state");
++        if (binding != null) {
++            binding.progressBar.setVisibility(View.VISIBLE);
++            binding.recyclerViewFavorites.setVisibility(View.GONE);
++            binding.layoutEmpty.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void hideLoading() {
+-        binding.progressBar.setVisibility(View.GONE);
++        Log.d(TAG, "Hiding loading state");
++        if (binding != null) {
++            binding.progressBar.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void showContent() {
+-        binding.recyclerViewFavorites.setVisibility(View.VISIBLE);
+-        binding.layoutEmpty.setVisibility(View.GONE);
++        Log.d(TAG, "Showing content - Favorite articles count: " + favoriteArticles.size());
++        if (binding != null) {
++            binding.recyclerViewFavorites.setVisibility(View.VISIBLE);
++            binding.layoutEmpty.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void showEmptyState() {
+-        binding.recyclerViewFavorites.setVisibility(View.GONE);
+-        binding.layoutEmpty.setVisibility(View.VISIBLE);
++        Log.d(TAG, "Showing empty state");
++        if (binding != null) {
++            binding.recyclerViewFavorites.setVisibility(View.GONE);
++            binding.layoutEmpty.setVisibility(View.VISIBLE);
++        }
+     }
+ 
+     @Override
+     public void onResume() {
+         super.onResume();
++        Log.d(TAG, "Fragment resumed - refreshing favorites from SQLite");
+         // Refresh favorites when fragment becomes visible
+         loadFavorites();
+     }
+@@ -119,5 +175,6 @@
+             executorService.shutdown();
+         }
+         binding = null;
++        Log.d(TAG, "FavoritesFragment destroyed - SQLite connections will be closed automatically");
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/example/snapnews/fragment/SearchFragment.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.fragment;\n\nimport android.content.Context;\nimport android.net.ConnectivityManager;\nimport android.net.NetworkInfo;\nimport android.os.Bundle;\nimport android.os.Handler;\nimport android.os.Looper;\nimport android.text.Editable;\nimport android.text.TextWatcher;\nimport android.view.LayoutInflater;\nimport android.view.View;\nimport android.view.ViewGroup;\nimport androidx.annotation.NonNull;\nimport androidx.annotation.Nullable;\nimport androidx.fragment.app.Fragment;\nimport androidx.recyclerview.widget.LinearLayoutManager;\nimport com.example.snapnews.adapter.NewsAdapter;\nimport com.example.snapnews.database.ArticleDao;\nimport com.example.snapnews.database.NewsDatabase;\nimport com.example.snapnews.databinding.FragmentSearchBinding;\nimport com.example.snapnews.models.Article;\nimport com.example.snapnews.models.NewsResponse;\nimport com.example.snapnews.network.RetrofitClient;\nimport com.example.snapnews.network.NewsApiService;\nimport retrofit2.Call;\nimport retrofit2.Callback;\nimport retrofit2.Response;\nimport java.util.ArrayList;\nimport java.util.List;\nimport com.example.snapnews.utils.ApiKeyManager;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\n\npublic class SearchFragment extends Fragment {\n    private FragmentSearchBinding binding;\n    private NewsAdapter newsAdapter;\n    private List<Article> searchResults = new ArrayList<>();\n    private NewsApiService newsApiService;\n    private ArticleDao articleDao;\n    private ExecutorService executorService;\n    private Handler mainHandler;\n    private Handler searchHandler;\n    private Runnable searchRunnable;\n    private String currentQuery = \"\";\n\n    @Override\n    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {\n        binding = FragmentSearchBinding.inflate(inflater, container, false);\n        return binding.getRoot();\n    }\n\n    @Override\n    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {\n        super.onViewCreated(view, savedInstanceState);\n\n        initializeComponents();\n        setupRecyclerView();\n        setupSearchView();\n        showInitialState();\n    }\n\n    private void initializeComponents() {\n        newsApiService = RetrofitClient.getNewsApiService();\n        NewsDatabase database = NewsDatabase.getDatabase(requireContext());\n        articleDao = database.articleDao();\n        executorService = Executors.newFixedThreadPool(2);\n        mainHandler = new Handler(Looper.getMainLooper());\n        searchHandler = new Handler(Looper.getMainLooper());\n    }\n\n    private void setupRecyclerView() {\n        newsAdapter = new NewsAdapter(searchResults, article -> {\n            if (getActivity() != null) {\n                ((com.example.snapnews.activity.MainActivity) getActivity()).navigateToDetail(article);\n            }\n        });\n\n        binding.recyclerViewSearch.setLayoutManager(new LinearLayoutManager(getContext()));\n        binding.recyclerViewSearch.setAdapter(newsAdapter);\n    }\n\n    private void setupSearchView() {\n        binding.editTextSearch.addTextChangedListener(new TextWatcher() {\n            @Override\n            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}\n\n            @Override\n            public void onTextChanged(CharSequence s, int start, int before, int count) {}\n\n            @Override\n            public void afterTextChanged(Editable s) {\n                String query = s.toString().trim();\n\n                // Cancel previous search\n                if (searchRunnable != null) {\n                    searchHandler.removeCallbacks(searchRunnable);\n                }\n\n                if (query.isEmpty()) {\n                    showInitialState();\n                    return;\n                }\n\n                // Delay search to avoid too many API calls\n                searchRunnable = () -> performSearch(query);\n                searchHandler.postDelayed(searchRunnable, 500);\n            }\n        });\n\n        binding.buttonSearch.setOnClickListener(v -> {\n            String query = binding.editTextSearch.getText().toString().trim();\n            if (!query.isEmpty()) {\n                performSearch(query);\n            }\n        });\n    }\n\n    private void performSearch(String query) {\n        if (query.equals(currentQuery)) return;\n\n        currentQuery = query;\n\n        if (isNetworkAvailable()) {\n            searchOnline(query);\n        } else {\n            searchOffline(query);\n        }\n    }\n\n    private void searchOnline(String query) {\n        showLoading();\n\n        Call<NewsResponse> call = newsApiService.searchNews(\n                query,\n                \"publishedAt\",\n                50,\n                1,\n                ApiKeyManager.getNewsApiKey()\n        );\n\n        call.enqueue(new Callback<NewsResponse>() {\n            @Override\n            public void onResponse(@NonNull Call<NewsResponse> call, @NonNull Response<NewsResponse> response) {\n                hideLoading();\n\n                if (response.isSuccessful() && response.body() != null) {\n                    NewsResponse newsResponse = response.body();\n\n                    if (\"ok\".equals(newsResponse.getStatus()) && newsResponse.getArticles() != null) {\n                        searchResults.clear();\n                        searchResults.addAll(newsResponse.getArticles());\n                        newsAdapter.notifyDataSetChanged();\n\n                        if (searchResults.isEmpty()) {\n                            showEmptyState(\"No results found\", \"Try searching with different keywords\");\n                        } else {\n                            showResults();\n                        }\n                    } else {\n                        showError(\"Search Error\", newsResponse.getMessage());\n                    }\n                } else {\n                    showError(\"Search Error\", \"Failed to search news\");\n                }\n            }\n\n            @Override\n            public void onFailure(@NonNull Call<NewsResponse> call, @NonNull Throwable t) {\n                hideLoading();\n                showError(\"Network Error\", \"Please check your internet connection\");\n                searchOffline(query);\n            }\n        });\n    }\n\n    private void searchOffline(String query) {\n        showLoading();\n\n        executorService.execute(() -> {\n            List<Article> results = articleDao.searchArticles(query);\n\n            mainHandler.post(() -> {\n                hideLoading();\n\n                searchResults.clear();\n                if (results != null) {\n                    searchResults.addAll(results);\n                }\n                newsAdapter.notifyDataSetChanged();\n\n                if (searchResults.isEmpty()) {\n                    showEmptyState(\"No offline results\", \"Connect to internet for more results\");\n                } else {\n                    showResults();\n                }\n            });\n        });\n    }\n\n    private void showInitialState() {\n        binding.layoutInitial.setVisibility(View.VISIBLE);\n        binding.recyclerViewSearch.setVisibility(View.GONE);\n        binding.progressBar.setVisibility(View.GONE);\n        binding.layoutEmpty.setVisibility(View.GONE);\n        searchResults.clear();\n        newsAdapter.notifyDataSetChanged();\n    }\n\n    private void showLoading() {\n        binding.layoutInitial.setVisibility(View.GONE);\n        binding.recyclerViewSearch.setVisibility(View.GONE);\n        binding.progressBar.setVisibility(View.VISIBLE);\n        binding.layoutEmpty.setVisibility(View.GONE);\n    }\n\n    private void hideLoading() {\n        binding.progressBar.setVisibility(View.GONE);\n    }\n\n    private void showResults() {\n        binding.layoutInitial.setVisibility(View.GONE);\n        binding.recyclerViewSearch.setVisibility(View.VISIBLE);\n        binding.layoutEmpty.setVisibility(View.GONE);\n    }\n\n    private void showEmptyState(String title, String message) {\n        binding.layoutInitial.setVisibility(View.GONE);\n        binding.recyclerViewSearch.setVisibility(View.GONE);\n        binding.layoutEmpty.setVisibility(View.VISIBLE);\n        binding.textEmptyTitle.setText(title);\n        binding.textEmptyMessage.setText(message);\n    }\n\n    private void showError(String title, String message) {\n        showEmptyState(title, message);\n    }\n\n    private boolean isNetworkAvailable() {\n        ConnectivityManager connectivityManager =\n                (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);\n        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();\n        return activeNetworkInfo != null && activeNetworkInfo.isConnected();\n    }\n\n    @Override\n    public void onDestroy() {\n        super.onDestroy();\n        if (executorService != null && !executorService.isShutdown()) {\n            executorService.shutdown();\n        }\n        if (searchHandler != null && searchRunnable != null) {\n            searchHandler.removeCallbacks(searchRunnable);\n        }\n        binding = null;\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/fragment/SearchFragment.java b/app/src/main/java/com/example/snapnews/fragment/SearchFragment.java
+--- a/app/src/main/java/com/example/snapnews/fragment/SearchFragment.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/fragment/SearchFragment.java	(date 1748388117193)
+@@ -8,6 +8,7 @@
+ import android.os.Looper;
+ import android.text.Editable;
+ import android.text.TextWatcher;
++import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -17,7 +18,7 @@
+ import androidx.recyclerview.widget.LinearLayoutManager;
+ import com.example.snapnews.adapter.NewsAdapter;
+ import com.example.snapnews.database.ArticleDao;
+-import com.example.snapnews.database.NewsDatabase;
++import com.example.snapnews.database.NewsDatabaseHelper;
+ import com.example.snapnews.databinding.FragmentSearchBinding;
+ import com.example.snapnews.models.Article;
+ import com.example.snapnews.models.NewsResponse;
+@@ -33,11 +34,13 @@
+ import java.util.concurrent.Executors;
+ 
+ public class SearchFragment extends Fragment {
++    private static final String TAG = "SearchFragment";
+     private FragmentSearchBinding binding;
+     private NewsAdapter newsAdapter;
+     private List<Article> searchResults = new ArrayList<>();
+     private NewsApiService newsApiService;
+     private ArticleDao articleDao;
++    private NewsDatabaseHelper dbHelper;
+     private ExecutorService executorService;
+     private Handler mainHandler;
+     private Handler searchHandler;
+@@ -62,11 +65,16 @@
+ 
+     private void initializeComponents() {
+         newsApiService = RetrofitClient.getNewsApiService();
+-        NewsDatabase database = NewsDatabase.getDatabase(requireContext());
+-        articleDao = database.articleDao();
++
++        // PERUBAHAN: Inisialisasi SQLite Database Helper
++        dbHelper = NewsDatabaseHelper.getInstance(requireContext());
++        articleDao = new ArticleDao(dbHelper);
++
+         executorService = Executors.newFixedThreadPool(2);
+         mainHandler = new Handler(Looper.getMainLooper());
+         searchHandler = new Handler(Looper.getMainLooper());
++
++        Log.d(TAG, "Components initialized with SQLite database");
+     }
+ 
+     private void setupRecyclerView() {
+@@ -78,6 +86,8 @@
+ 
+         binding.recyclerViewSearch.setLayoutManager(new LinearLayoutManager(getContext()));
+         binding.recyclerViewSearch.setAdapter(newsAdapter);
++
++        Log.d(TAG, "RecyclerView setup completed");
+     }
+ 
+     private void setupSearchView() {
+@@ -120,16 +130,19 @@
+         if (query.equals(currentQuery)) return;
+ 
+         currentQuery = query;
++        Log.d(TAG, "Performing search for: " + query);
+ 
+         if (isNetworkAvailable()) {
+             searchOnline(query);
+         } else {
++            Log.w(TAG, "No network available, searching offline in SQLite");
+             searchOffline(query);
+         }
+     }
+ 
+     private void searchOnline(String query) {
+         showLoading();
++        Log.d(TAG, "Searching online for: " + query);
+ 
+         Call<NewsResponse> call = newsApiService.searchNews(
+                 query,
+@@ -142,12 +155,15 @@
+         call.enqueue(new Callback<NewsResponse>() {
+             @Override
+             public void onResponse(@NonNull Call<NewsResponse> call, @NonNull Response<NewsResponse> response) {
++                Log.d(TAG, "Search API response received for query: " + query);
+                 hideLoading();
+ 
+                 if (response.isSuccessful() && response.body() != null) {
+                     NewsResponse newsResponse = response.body();
+ 
+                     if ("ok".equals(newsResponse.getStatus()) && newsResponse.getArticles() != null) {
++                        Log.d(TAG, "Search found " + newsResponse.getArticles().size() + " articles online");
++
+                         searchResults.clear();
+                         searchResults.addAll(newsResponse.getArticles());
+                         newsAdapter.notifyDataSetChanged();
+@@ -158,15 +174,18 @@
+                             showResults();
+                         }
+                     } else {
++                        Log.e(TAG, "Search API error: " + newsResponse.getMessage());
+                         showError("Search Error", newsResponse.getMessage());
+                     }
+                 } else {
++                    Log.e(TAG, "Search API response not successful: " + response.code());
+                     showError("Search Error", "Failed to search news");
+                 }
+             }
+ 
+             @Override
+             public void onFailure(@NonNull Call<NewsResponse> call, @NonNull Throwable t) {
++                Log.e(TAG, "Search API call failed", t);
+                 hideLoading();
+                 showError("Network Error", "Please check your internet connection");
+                 searchOffline(query);
+@@ -176,71 +195,104 @@
+ 
+     private void searchOffline(String query) {
+         showLoading();
++        Log.d(TAG, "Searching offline in SQLite for: " + query);
+ 
++        // PERUBAHAN: Menggunakan SQLite langsung tanpa Room
+         executorService.execute(() -> {
+-            List<Article> results = articleDao.searchArticles(query);
++            try {
++                List<Article> results = articleDao.searchArticles(query);
+ 
+-            mainHandler.post(() -> {
+-                hideLoading();
++                mainHandler.post(() -> {
++                    hideLoading();
+ 
+-                searchResults.clear();
+-                if (results != null) {
+-                    searchResults.addAll(results);
+-                }
+-                newsAdapter.notifyDataSetChanged();
+-
+-                if (searchResults.isEmpty()) {
+-                    showEmptyState("No offline results", "Connect to internet for more results");
+-                } else {
+-                    showResults();
+-                }
+-            });
++                    searchResults.clear();
++                    if (results != null && !results.isEmpty()) {
++                        Log.d(TAG, "Found " + results.size() + " articles in SQLite for query: " + query);
++                        searchResults.addAll(results);
++                        newsAdapter.notifyDataSetChanged();
++                        showResults();
++                    } else {
++                        Log.d(TAG, "No offline results found in SQLite for query: " + query);
++                        showEmptyState("No offline results", "Connect to internet for more results");
++                    }
++                });
++
++            } catch (Exception e) {
++                Log.e(TAG, "Error searching in SQLite database", e);
++                mainHandler.post(() -> {
++                    hideLoading();
++                    showError("Database Error", "Error searching cached news");
++                });
++            }
+         });
+     }
+ 
+     private void showInitialState() {
+-        binding.layoutInitial.setVisibility(View.VISIBLE);
+-        binding.recyclerViewSearch.setVisibility(View.GONE);
+-        binding.progressBar.setVisibility(View.GONE);
+-        binding.layoutEmpty.setVisibility(View.GONE);
+-        searchResults.clear();
+-        newsAdapter.notifyDataSetChanged();
++        Log.d(TAG, "Showing initial state");
++        if (binding != null) {
++            binding.layoutInitial.setVisibility(View.VISIBLE);
++            binding.recyclerViewSearch.setVisibility(View.GONE);
++            binding.progressBar.setVisibility(View.GONE);
++            binding.layoutEmpty.setVisibility(View.GONE);
++            searchResults.clear();
++            newsAdapter.notifyDataSetChanged();
++        }
+     }
+ 
+     private void showLoading() {
+-        binding.layoutInitial.setVisibility(View.GONE);
+-        binding.recyclerViewSearch.setVisibility(View.GONE);
+-        binding.progressBar.setVisibility(View.VISIBLE);
+-        binding.layoutEmpty.setVisibility(View.GONE);
++        Log.d(TAG, "Showing loading state");
++        if (binding != null) {
++            binding.layoutInitial.setVisibility(View.GONE);
++            binding.recyclerViewSearch.setVisibility(View.GONE);
++            binding.progressBar.setVisibility(View.VISIBLE);
++            binding.layoutEmpty.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void hideLoading() {
+-        binding.progressBar.setVisibility(View.GONE);
++        Log.d(TAG, "Hiding loading state");
++        if (binding != null) {
++            binding.progressBar.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void showResults() {
+-        binding.layoutInitial.setVisibility(View.GONE);
+-        binding.recyclerViewSearch.setVisibility(View.VISIBLE);
+-        binding.layoutEmpty.setVisibility(View.GONE);
++        Log.d(TAG, "Showing search results - Count: " + searchResults.size());
++        if (binding != null) {
++            binding.layoutInitial.setVisibility(View.GONE);
++            binding.recyclerViewSearch.setVisibility(View.VISIBLE);
++            binding.layoutEmpty.setVisibility(View.GONE);
++        }
+     }
+ 
+     private void showEmptyState(String title, String message) {
+-        binding.layoutInitial.setVisibility(View.GONE);
+-        binding.recyclerViewSearch.setVisibility(View.GONE);
+-        binding.layoutEmpty.setVisibility(View.VISIBLE);
+-        binding.textEmptyTitle.setText(title);
+-        binding.textEmptyMessage.setText(message);
++        Log.d(TAG, "Showing empty state: " + title);
++        if (binding != null) {
++            binding.layoutInitial.setVisibility(View.GONE);
++            binding.recyclerViewSearch.setVisibility(View.GONE);
++            binding.layoutEmpty.setVisibility(View.VISIBLE);
++            binding.textEmptyTitle.setText(title);
++            binding.textEmptyMessage.setText(message);
++        }
+     }
+ 
+     private void showError(String title, String message) {
++        Log.e(TAG, "Showing error: " + title + " - " + message);
+         showEmptyState(title, message);
+     }
+ 
+     private boolean isNetworkAvailable() {
+-        ConnectivityManager connectivityManager =
+-                (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+-        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+-        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
++        try {
++            ConnectivityManager connectivityManager =
++                    (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
++            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
++            boolean result = activeNetworkInfo != null && activeNetworkInfo.isConnected();
++            Log.d(TAG, "Network available: " + result);
++            return result;
++        } catch (Exception e) {
++            Log.e(TAG, "Error checking network", e);
++            return false;
++        }
+     }
+ 
+     @Override
+@@ -253,5 +305,6 @@
+             searchHandler.removeCallbacks(searchRunnable);
+         }
+         binding = null;
++        Log.d(TAG, "SearchFragment destroyed - SQLite connections will be closed automatically");
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/example/snapnews/models/Article.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.models;\n\nimport androidx.room.Entity;\nimport androidx.room.PrimaryKey;\nimport com.google.gson.annotations.SerializedName;\n\n@Entity(tableName = \"articles\")\npublic class Article {\n    @PrimaryKey(autoGenerate = true)\n    private int id;\n\n    @SerializedName(\"title\")\n    private String title;\n\n    @SerializedName(\"description\")\n    private String description;\n\n    @SerializedName(\"url\")\n    private String url;\n\n    @SerializedName(\"urlToImage\")\n    private String urlToImage;\n\n    @SerializedName(\"publishedAt\")\n    private String publishedAt;\n\n    @SerializedName(\"content\")\n    private String content;\n\n    @SerializedName(\"author\")\n    private String author;\n\n    @SerializedName(\"source\")\n    private Source source;\n\n    private boolean isFavorite = false;\n    private long timestamp = System.currentTimeMillis();\n\n    // Constructors\n    public Article() {}\n\n    public Article(String title, String description, String url, String urlToImage,\n                   String publishedAt, String content, String author, Source source) {\n        this.title = title;\n        this.description = description;\n        this.url = url;\n        this.urlToImage = urlToImage;\n        this.publishedAt = publishedAt;\n        this.content = content;\n        this.author = author;\n        this.source = source;\n    }\n\n    // Getters and Setters\n    public int getId() { return id; }\n    public void setId(int id) { this.id = id; }\n\n    public String getTitle() { return title; }\n    public void setTitle(String title) { this.title = title; }\n\n    public String getDescription() { return description; }\n    public void setDescription(String description) { this.description = description; }\n\n    public String getUrl() { return url; }\n    public void setUrl(String url) { this.url = url; }\n\n    public String getUrlToImage() { return urlToImage; }\n    public void setUrlToImage(String urlToImage) { this.urlToImage = urlToImage; }\n\n    public String getPublishedAt() { return publishedAt; }\n    public void setPublishedAt(String publishedAt) { this.publishedAt = publishedAt; }\n\n    public String getContent() { return content; }\n    public void setContent(String content) { this.content = content; }\n\n    public String getAuthor() { return author; }\n    public void setAuthor(String author) { this.author = author; }\n\n    public Source getSource() { return source; }\n    public void setSource(Source source) { this.source = source; }\n\n    public boolean isFavorite() { return isFavorite; }\n    public void setFavorite(boolean favorite) { isFavorite = favorite; }\n\n    public long getTimestamp() { return timestamp; }\n    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/models/Article.java b/app/src/main/java/com/example/snapnews/models/Article.java
+--- a/app/src/main/java/com/example/snapnews/models/Article.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/models/Article.java	(date 1748388117144)
+@@ -1,12 +1,9 @@
+ package com.example.snapnews.models;
+ 
+-import androidx.room.Entity;
+-import androidx.room.PrimaryKey;
+ import com.google.gson.annotations.SerializedName;
+ 
+-@Entity(tableName = "articles")
+ public class Article {
+-    @PrimaryKey(autoGenerate = true)
++    // Menghapus @Entity, @PrimaryKey, dan semua anotasi Room
+     private int id;
+ 
+     @SerializedName("title")
+@@ -33,6 +30,7 @@
+     @SerializedName("source")
+     private Source source;
+ 
++    // Removed Room annotations - hanya field biasa untuk SQLite
+     private boolean isFavorite = false;
+     private long timestamp = System.currentTimeMillis();
+ 
+@@ -49,9 +47,10 @@
+         this.content = content;
+         this.author = author;
+         this.source = source;
++        this.timestamp = System.currentTimeMillis(); // Set timestamp saat dibuat
+     }
+ 
+-    // Getters and Setters
++    // Getters and Setters - tetap sama seperti sebelumnya
+     public int getId() { return id; }
+     public void setId(int id) { this.id = id; }
+ 
+@@ -84,4 +83,16 @@
+ 
+     public long getTimestamp() { return timestamp; }
+     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+-}
++
++    // Helper method untuk debugging
++    @Override
++    public String toString() {
++        return "Article{" +
++                "id=" + id +
++                ", title='" + title + '\'' +
++                ", url='" + url + '\'' +
++                ", isFavorite=" + isFavorite +
++                ", timestamp=" + timestamp +
++                '}';
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/com/example/snapnews/fragment/HomeFragment.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.snapnews.fragment;\n\nimport android.content.Context;\nimport android.net.ConnectivityManager;\nimport android.net.NetworkInfo;\nimport android.os.Bundle;\nimport android.os.Handler;\nimport android.os.Looper;\nimport android.util.Log;\nimport android.view.LayoutInflater;\nimport android.view.View;\nimport android.view.ViewGroup;\nimport android.widget.Toast;\nimport androidx.annotation.NonNull;\nimport androidx.annotation.Nullable;\nimport androidx.fragment.app.Fragment;\nimport androidx.recyclerview.widget.LinearLayoutManager;\n\nimport com.example.snapnews.network.RetrofitClient;\nimport com.example.snapnews.R;\nimport com.example.snapnews.adapter.FilterChipAdapter;\nimport com.example.snapnews.adapter.NewsAdapter;\nimport com.example.snapnews.database.ArticleDao;\nimport com.example.snapnews.database.NewsDatabase;\nimport com.example.snapnews.databinding.FragmentHomeBinding;\nimport com.example.snapnews.models.Article;\nimport com.example.snapnews.models.FilterChip;\nimport com.example.snapnews.models.NewsResponse;\nimport com.example.snapnews.network.NewsApiService;\nimport retrofit2.Call;\nimport retrofit2.Callback;\nimport retrofit2.Response;\nimport java.util.ArrayList;\nimport java.util.List;\nimport com.example.snapnews.utils.ApiKeyManager;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\n\npublic class HomeFragment extends Fragment {\n    private static final String TAG = \"HomeFragment\";\n    private FragmentHomeBinding binding;\n    private NewsAdapter newsAdapter;\n    private FilterChipAdapter filterChipAdapter;\n    private List<Article> articles = new ArrayList<>();\n    private List<FilterChip> filterChips = new ArrayList<>();\n    private NewsApiService newsApiService;\n    private ArticleDao articleDao;\n    private ExecutorService executorService;\n    private Handler mainHandler;\n    private FilterChip currentFilter;\n\n    @Override\n    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {\n        binding = FragmentHomeBinding.inflate(inflater, container, false);\n        return binding.getRoot();\n    }\n\n    @Override\n    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {\n        super.onViewCreated(view, savedInstanceState);\n\n        initializeComponents();\n        setupFilterChips();\n        setupRecyclerViews();\n        setupSwipeRefresh();\n        loadNews();\n    }\n\n    private void initializeComponents() {\n        newsApiService = RetrofitClient.getNewsApiService();\n        NewsDatabase database = NewsDatabase.getDatabase(requireContext());\n        articleDao = database.articleDao();\n        executorService = Executors.newFixedThreadPool(2);\n        mainHandler = new Handler(Looper.getMainLooper());\n        Log.d(TAG, \"Components initialized\");\n    }\n\n    private void setupFilterChips() {\n        filterChips.clear();\n\n        filterChips.add(new FilterChip(\"Latest\", null, \"us\"));\n        filterChips.add(new FilterChip(\"Business\", \"business\", \"us\"));\n        filterChips.add(new FilterChip(\"Technology\", \"technology\", \"us\"));\n        filterChips.add(new FilterChip(\"Entertainment\", \"entertainment\", \"us\"));\n        filterChips.add(new FilterChip(\"Sports\", \"sports\", \"us\"));\n        filterChips.add(new FilterChip(\"Health\", \"health\", \"us\"));\n\n        currentFilter = filterChips.get(0);\n        currentFilter.setSelected(true);\n\n        filterChipAdapter = new FilterChipAdapter(filterChips, new FilterChipAdapter.OnChipClickListener() {\n            @Override\n            public void onChipClick(FilterChip filterChip, int position) {\n                Log.d(TAG, \"Filter clicked: \" + filterChip.getName());\n                onFilterChipClicked(filterChip, position);\n            }\n        });\n\n        Log.d(TAG, \"Filter chips setup completed with \" + filterChips.size() + \" chips\");\n    }\n\n    private void setupRecyclerViews() {\n        LinearLayoutManager chipLayoutManager = new LinearLayoutManager(\n                getContext(), LinearLayoutManager.HORIZONTAL, false);\n        binding.recyclerViewFilterChips.setLayoutManager(chipLayoutManager);\n        binding.recyclerViewFilterChips.setAdapter(filterChipAdapter);\n\n        newsAdapter = new NewsAdapter(articles, article -> {\n            if (getActivity() != null) {\n                ((com.example.snapnews.activity.MainActivity) getActivity()).navigateToDetail(article);\n            }\n        });\n\n        binding.recyclerViewNews.setLayoutManager(new LinearLayoutManager(getContext()));\n        binding.recyclerViewNews.setAdapter(newsAdapter);\n\n        Log.d(TAG, \"RecyclerViews setup completed\");\n    }\n\n    private void setupSwipeRefresh() {\n        binding.swipeRefreshLayout.setOnRefreshListener(() -> {\n            Log.d(TAG, \"Swipe refresh triggered - forcing API call\");\n            // Force API call on swipe refresh\n            loadNewsFromApi();\n        });\n\n        binding.swipeRefreshLayout.setColorSchemeResources(\n                R.color.primary_color,\n                R.color.secondary_color\n        );\n    }\n\n    private void onFilterChipClicked(FilterChip filterChip, int position) {\n        Log.d(TAG, \"=== FILTER CHANGE TRIGGERED ===\");\n        Log.d(TAG, \"Old filter: \" + (currentFilter != null ? currentFilter.getName() : \"null\"));\n        Log.d(TAG, \"New filter: \" + filterChip.getName());\n        Log.d(TAG, \"Position: \" + position);\n\n        currentFilter = filterChip;\n\n        // Clear existing articles to show change immediately\n        articles.clear();\n        newsAdapter.notifyDataSetChanged();\n\n        // FORCE API CALL regardless of network status for testing\n        Log.d(TAG, \"FORCING API CALL for filter test\");\n        loadNewsFromApi();\n    }\n\n    private void loadNews() {\n        Log.d(TAG, \"=== LOADING NEWS ===\");\n        Log.d(TAG, \"Current filter: \" + (currentFilter != null ? currentFilter.getName() : \"null\"));\n\n        // Check network with detailed logging\n        boolean networkAvailable = isNetworkAvailable();\n        Log.d(TAG, \"Network check result: \" + networkAvailable);\n\n        if (networkAvailable) {\n            loadNewsFromApi();\n        } else {\n            Log.w(TAG, \"No network available, loading from database\");\n            loadNewsFromDatabase();\n        }\n    }\n\n    private void loadNewsFromApi() {\n        showLoading();\n\n        String category = currentFilter.getCategory();\n        String country = currentFilter.getCountry();\n\n        Log.d(TAG, \"=== API CALL DETAILS ===\");\n        Log.d(TAG, \"Filter: \" + currentFilter.getName());\n        Log.d(TAG, \"Category: \" + category);\n        Log.d(TAG, \"Country: \" + country);\n\n        Call<NewsResponse> call = newsApiService.getTopHeadlines(\n                country,\n                category,\n                20,\n                1,\n                ApiKeyManager.getNewsApiKey()\n        );\n\n        String url = call.request().url().toString();\n        Log.d(TAG, \"Full API URL: \" + url);\n\n        call.enqueue(new Callback<NewsResponse>() {\n            @Override\n            public void onResponse(@NonNull Call<NewsResponse> call, @NonNull Response<NewsResponse> response) {\n                Log.d(TAG, \"=== API RESPONSE ===\");\n                Log.d(TAG, \"Response code: \" + response.code());\n                Log.d(TAG, \"Response successful: \" + response.isSuccessful());\n\n                hideLoading();\n\n                if (response.isSuccessful() && response.body() != null) {\n                    NewsResponse newsResponse = response.body();\n                    Log.d(TAG, \"Response status: \" + newsResponse.getStatus());\n                    Log.d(TAG, \"Total results: \" + newsResponse.getTotalResults());\n\n                    if (\"ok\".equals(newsResponse.getStatus()) && newsResponse.getArticles() != null) {\n                        int articleCount = newsResponse.getArticles().size();\n                        Log.d(TAG, \"Articles received: \" + articleCount);\n\n                        // Clear and add new articles\n                        articles.clear();\n                        articles.addAll(newsResponse.getArticles());\n\n                        Log.d(TAG, \"Articles added to list. Current list size: \" + articles.size());\n\n                        // Notify adapter\n                        newsAdapter.notifyDataSetChanged();\n                        Log.d(TAG, \"Adapter notified\");\n\n                        // Save to database\n                        saveArticlesToDatabase(newsResponse.getArticles());\n\n                        showContent();\n\n                        // Show success message with filter name\n                        String message = \"✅ \" + currentFilter.getName() + \": \" + articleCount + \" articles loaded\";\n                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();\n                        Log.d(TAG, message);\n\n                    } else {\n                        String errorMsg = \"API returned error - Status: \" + newsResponse.getStatus();\n                        if (newsResponse.getMessage() != null) {\n                            errorMsg += \", Message: \" + newsResponse.getMessage();\n                        }\n                        Log.e(TAG, errorMsg);\n                        handleApiError(newsResponse.getMessage());\n                    }\n                } else {\n                    String errorMsg = \"Response not successful - Code: \" + response.code();\n                    Log.e(TAG, errorMsg);\n\n                    try {\n                        if (response.errorBody() != null) {\n                            String errorBody = response.errorBody().string();\n                            Log.e(TAG, \"Error body: \" + errorBody);\n                        }\n                    } catch (Exception e) {\n                        Log.e(TAG, \"Error reading error body\", e);\n                    }\n\n                    handleApiError(\"Failed to load \" + currentFilter.getName() + \" news\");\n                }\n            }\n\n            @Override\n            public void onFailure(@NonNull Call<NewsResponse> call, @NonNull Throwable t) {\n                Log.e(TAG, \"=== API CALL FAILED ===\", t);\n                hideLoading();\n                handleNetworkError();\n            }\n        });\n    }\n\n    private void loadNewsFromDatabase() {\n        showLoading();\n\n        executorService.execute(() -> {\n            Log.d(TAG, \"Loading news from database\");\n            List<Article> cachedArticles = articleDao.getAllArticles();\n\n            mainHandler.post(() -> {\n                hideLoading();\n\n                if (cachedArticles != null && !cachedArticles.isEmpty()) {\n                    Log.d(TAG, \"Loaded \" + cachedArticles.size() + \" articles from database\");\n                    articles.clear();\n                    articles.addAll(cachedArticles);\n                    newsAdapter.notifyDataSetChanged();\n                    showContent();\n\n                    String message = \"\uD83D\uDCF1 Offline: showing cached \" + currentFilter.getName() + \" news\";\n                    Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();\n                } else {\n                    Log.w(TAG, \"No cached articles found\");\n                    showError(\"No cached news available\", \"Connect to internet and pull down to refresh\");\n                }\n            });\n        });\n    }\n\n    private void saveArticlesToDatabase(List<Article> articles) {\n        executorService.execute(() -> {\n            try {\n                Log.d(TAG, \"Saving \" + articles.size() + \" articles to database\");\n                // Don't clear old articles, just add new ones\n                articleDao.insertArticles(articles);\n                Log.d(TAG, \"Articles saved successfully\");\n            } catch (Exception e) {\n                Log.e(TAG, \"Error saving articles to database\", e);\n            }\n        });\n    }\n\n    private void showLoading() {\n        Log.d(TAG, \"Showing loading state\");\n        if (binding != null) {\n            binding.progressBar.setVisibility(View.VISIBLE);\n            binding.recyclerViewNews.setVisibility(View.GONE);\n            binding.layoutError.setVisibility(View.GONE);\n            binding.swipeRefreshLayout.setRefreshing(false);\n        }\n    }\n\n    private void hideLoading() {\n        Log.d(TAG, \"Hiding loading state\");\n        if (binding != null) {\n            binding.progressBar.setVisibility(View.GONE);\n            binding.swipeRefreshLayout.setRefreshing(false);\n        }\n    }\n\n    private void showContent() {\n        Log.d(TAG, \"Showing content - Articles count: \" + articles.size());\n        if (binding != null) {\n            binding.recyclerViewNews.setVisibility(View.VISIBLE);\n            binding.layoutError.setVisibility(View.GONE);\n        }\n    }\n\n    private void showError(String title, String message) {\n        Log.d(TAG, \"Showing error: \" + title + \" - \" + message);\n        if (binding != null) {\n            binding.recyclerViewNews.setVisibility(View.GONE);\n            binding.layoutError.setVisibility(View.VISIBLE);\n            binding.textErrorTitle.setText(title);\n            binding.textErrorMessage.setText(message);\n\n            binding.buttonRetry.setOnClickListener(v -> {\n                binding.layoutError.setVisibility(View.GONE);\n                loadNews();\n            });\n        }\n    }\n\n    private void handleApiError(String message) {\n        Log.e(TAG, \"Handling API error: \" + message);\n\n        if (message != null && message.toLowerCase().contains(\"api key\")) {\n            showError(\"API Key Error\", \"Please check your API key configuration\");\n        } else {\n            showError(\"Server Error\", message != null ? message : \"Failed to load news\");\n        }\n\n        loadNewsFromDatabase();\n    }\n\n    private void handleNetworkError() {\n        Log.e(TAG, \"Handling network error\");\n        showError(\"Network Error\", \"Please check your internet connection\");\n        loadNewsFromDatabase();\n    }\n\n    private boolean isNetworkAvailable() {\n        try {\n            ConnectivityManager connectivityManager =\n                    (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);\n\n            if (connectivityManager == null) {\n                Log.e(TAG, \"ConnectivityManager is null\");\n                return false;\n            }\n\n            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();\n            Log.d(TAG, \"NetworkInfo: \" + activeNetworkInfo);\n\n            boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();\n            boolean isAvailable = activeNetworkInfo != null && activeNetworkInfo.isAvailable();\n\n            Log.d(TAG, \"Network connected: \" + isConnected);\n            Log.d(TAG, \"Network available: \" + isAvailable);\n            Log.d(TAG, \"Network type: \" + (activeNetworkInfo != null ? activeNetworkInfo.getTypeName() : \"null\"));\n\n            // Try both conditions\n            boolean result = isConnected && isAvailable;\n            Log.d(TAG, \"Final network result: \" + result);\n\n            return result;\n\n        } catch (Exception e) {\n            Log.e(TAG, \"Error checking network\", e);\n            return false;\n        }\n    }\n\n    @Override\n    public void onDestroy() {\n        super.onDestroy();\n        if (executorService != null && !executorService.isShutdown()) {\n            executorService.shutdown();\n        }\n        binding = null;\n        Log.d(TAG, \"HomeFragment destroyed\");\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/snapnews/fragment/HomeFragment.java b/app/src/main/java/com/example/snapnews/fragment/HomeFragment.java
+--- a/app/src/main/java/com/example/snapnews/fragment/HomeFragment.java	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/java/com/example/snapnews/fragment/HomeFragment.java	(date 1748388117212)
+@@ -21,7 +21,7 @@
+ import com.example.snapnews.adapter.FilterChipAdapter;
+ import com.example.snapnews.adapter.NewsAdapter;
+ import com.example.snapnews.database.ArticleDao;
+-import com.example.snapnews.database.NewsDatabase;
++import com.example.snapnews.database.NewsDatabaseHelper;
+ import com.example.snapnews.databinding.FragmentHomeBinding;
+ import com.example.snapnews.models.Article;
+ import com.example.snapnews.models.FilterChip;
+@@ -44,7 +44,11 @@
+     private List<Article> articles = new ArrayList<>();
+     private List<FilterChip> filterChips = new ArrayList<>();
+     private NewsApiService newsApiService;
++
++    // PERUBAHAN: Menggunakan NewsDatabaseHelper
+     private ArticleDao articleDao;
++    private NewsDatabaseHelper dbHelper; // GANTI dari NewsDatabase ke NewsDatabaseHelper
++
+     private ExecutorService executorService;
+     private Handler mainHandler;
+     private FilterChip currentFilter;
+@@ -68,11 +72,14 @@
+ 
+     private void initializeComponents() {
+         newsApiService = RetrofitClient.getNewsApiService();
+-        NewsDatabase database = NewsDatabase.getDatabase(requireContext());
+-        articleDao = database.articleDao();
++
++        // PERUBAHAN: Inisialisasi NewsDatabaseHelper
++        dbHelper = NewsDatabaseHelper.getInstance(requireContext());
++        articleDao = new ArticleDao(dbHelper);
++
+         executorService = Executors.newFixedThreadPool(2);
+         mainHandler = new Handler(Looper.getMainLooper());
+-        Log.d(TAG, "Components initialized");
++        Log.d(TAG, "Components initialized with NewsDatabaseHelper");
+     }
+ 
+     private void setupFilterChips() {
+@@ -120,7 +127,6 @@
+     private void setupSwipeRefresh() {
+         binding.swipeRefreshLayout.setOnRefreshListener(() -> {
+             Log.d(TAG, "Swipe refresh triggered - forcing API call");
+-            // Force API call on swipe refresh
+             loadNewsFromApi();
+         });
+ 
+@@ -142,7 +148,7 @@
+         articles.clear();
+         newsAdapter.notifyDataSetChanged();
+ 
+-        // FORCE API CALL regardless of network status for testing
++        // Force API call for testing
+         Log.d(TAG, "FORCING API CALL for filter test");
+         loadNewsFromApi();
+     }
+@@ -151,14 +157,13 @@
+         Log.d(TAG, "=== LOADING NEWS ===");
+         Log.d(TAG, "Current filter: " + (currentFilter != null ? currentFilter.getName() : "null"));
+ 
+-        // Check network with detailed logging
+         boolean networkAvailable = isNetworkAvailable();
+         Log.d(TAG, "Network check result: " + networkAvailable);
+ 
+         if (networkAvailable) {
+             loadNewsFromApi();
+         } else {
+-            Log.w(TAG, "No network available, loading from database");
++            Log.w(TAG, "No network available, loading from NewsDatabaseHelper");
+             loadNewsFromDatabase();
+         }
+     }
+@@ -213,12 +218,11 @@
+                         newsAdapter.notifyDataSetChanged();
+                         Log.d(TAG, "Adapter notified");
+ 
+-                        // Save to database
++                        // Save to NewsDatabaseHelper
+                         saveArticlesToDatabase(newsResponse.getArticles());
+ 
+                         showContent();
+ 
+-                        // Show success message with filter name
+                         String message = "✅ " + currentFilter.getName() + ": " + articleCount + " articles loaded";
+                         Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                         Log.d(TAG, message);
+@@ -260,39 +264,58 @@
+     private void loadNewsFromDatabase() {
+         showLoading();
+ 
++        // PERUBAHAN: Menggunakan NewsDatabaseHelper
+         executorService.execute(() -> {
+-            Log.d(TAG, "Loading news from database");
+-            List<Article> cachedArticles = articleDao.getAllArticles();
++            Log.d(TAG, "Loading news from NewsDatabaseHelper");
++
++            try {
++                List<Article> cachedArticles = articleDao.getAllArticles();
+ 
+-            mainHandler.post(() -> {
+-                hideLoading();
++                mainHandler.post(() -> {
++                    hideLoading();
+ 
+-                if (cachedArticles != null && !cachedArticles.isEmpty()) {
+-                    Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from database");
+-                    articles.clear();
+-                    articles.addAll(cachedArticles);
+-                    newsAdapter.notifyDataSetChanged();
+-                    showContent();
++                    if (cachedArticles != null && !cachedArticles.isEmpty()) {
++                        Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from NewsDatabaseHelper");
++                        articles.clear();
++                        articles.addAll(cachedArticles);
++                        newsAdapter.notifyDataSetChanged();
++                        showContent();
+ 
+-                    String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
+-                    Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+-                } else {
+-                    Log.w(TAG, "No cached articles found");
+-                    showError("No cached news available", "Connect to internet and pull down to refresh");
+-                }
+-            });
++                        String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
++                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
++                    } else {
++                        Log.w(TAG, "No cached articles found in NewsDatabaseHelper");
++                        showError("No cached news available", "Connect to internet and pull down to refresh");
++                    }
++                });
++            } catch (Exception e) {
++                Log.e(TAG, "Error loading from NewsDatabaseHelper", e);
++                mainHandler.post(() -> {
++                    hideLoading();
++                    showError("Database Error", "Error loading cached news");
++                });
++            }
+         });
+     }
+ 
+     private void saveArticlesToDatabase(List<Article> articles) {
++        // PERUBAHAN: Menggunakan NewsDatabaseHelper
+         executorService.execute(() -> {
+             try {
+-                Log.d(TAG, "Saving " + articles.size() + " articles to database");
+-                // Don't clear old articles, just add new ones
++                Log.d(TAG, "Saving " + articles.size() + " articles to NewsDatabaseHelper");
++
++                // Set timestamp untuk setiap artikel
++                for (Article article : articles) {
++                    if (article.getTimestamp() == 0) {
++                        article.setTimestamp(System.currentTimeMillis());
++                    }
++                }
++
+                 articleDao.insertArticles(articles);
+-                Log.d(TAG, "Articles saved successfully");
++                Log.d(TAG, "Articles saved successfully to NewsDatabaseHelper");
++
+             } catch (Exception e) {
+-                Log.e(TAG, "Error saving articles to database", e);
++                Log.e(TAG, "Error saving articles to NewsDatabaseHelper", e);
+             }
+         });
+     }
+@@ -367,18 +390,8 @@
+             }
+ 
+             NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+-            Log.d(TAG, "NetworkInfo: " + activeNetworkInfo);
+-
+-            boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+-            boolean isAvailable = activeNetworkInfo != null && activeNetworkInfo.isAvailable();
+-
+-            Log.d(TAG, "Network connected: " + isConnected);
+-            Log.d(TAG, "Network available: " + isAvailable);
+-            Log.d(TAG, "Network type: " + (activeNetworkInfo != null ? activeNetworkInfo.getTypeName() : "null"));
+-
+-            // Try both conditions
+-            boolean result = isConnected && isAvailable;
+-            Log.d(TAG, "Final network result: " + result);
++            boolean result = activeNetworkInfo != null && activeNetworkInfo.isConnected();
++            Log.d(TAG, "Network available: " + result);
+ 
+             return result;
+ 
+@@ -395,6 +408,6 @@
+             executorService.shutdown();
+         }
+         binding = null;
+-        Log.d(TAG, "HomeFragment destroyed");
++        Log.d(TAG, "HomeFragment destroyed - NewsDatabaseHelper connections will be closed automatically");
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_detail.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\"\n    tools:context=\".activity.DetailActivity\">\n\n    <!-- Toolbar with Favorite Icon -->\n    <androidx.appcompat.widget.Toolbar\n        android:id=\"@+id/toolbar\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"?attr/actionBarSize\"\n        android:background=\"#1976D2\"\n        app:titleTextColor=\"#FFFFFF\"\n        app:navigationIcon=\"?attr/homeAsUpIndicator\">\n\n        <!-- Favorite Toggle Button in Toolbar -->\n        <ImageView\n            android:id=\"@+id/btn_favorite\"\n            android:layout_width=\"24dp\"\n            android:layout_height=\"24dp\"\n            android:layout_gravity=\"end\"\n            android:layout_marginEnd=\"16dp\"\n            android:src=\"@drawable/ic_favorite_border\"\n            android:contentDescription=\"Toggle favorite\"\n            android:clickable=\"true\"\n            android:focusable=\"true\"\n            android:background=\"?android:attr/selectableItemBackgroundBorderless\"\n            android:padding=\"4dp\" />\n\n    </androidx.appcompat.widget.Toolbar>\n\n    <!-- Content ScrollView -->\n    <ScrollView\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"0dp\"\n        android:layout_weight=\"1\">\n\n        <LinearLayout\n            android:layout_width=\"match_parent\"\n            android:layout_height=\"wrap_content\"\n            android:orientation=\"vertical\">\n\n            <!-- Article Image -->\n            <ImageView\n                android:id=\"@+id/image_article\"\n                android:layout_width=\"match_parent\"\n                android:layout_height=\"200dp\"\n                android:scaleType=\"centerCrop\"\n                android:background=\"#E0E0E0\"\n                android:contentDescription=\"Article image\" />\n\n            <!-- Content Container -->\n            <LinearLayout\n                android:layout_width=\"match_parent\"\n                android:layout_height=\"wrap_content\"\n                android:orientation=\"vertical\"\n                android:padding=\"16dp\">\n\n                <!-- Title -->\n                <TextView\n                    android:id=\"@+id/text_title\"\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"wrap_content\"\n                    android:textSize=\"20sp\"\n                    android:textStyle=\"bold\"\n                    android:textColor=\"#212121\"\n                    android:lineSpacingExtra=\"4dp\"\n                    tools:text=\"Article Title Goes Here\" />\n\n                <!-- Author and Date -->\n                <TextView\n                    android:id=\"@+id/text_author_date\"\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"wrap_content\"\n                    android:layout_marginTop=\"8dp\"\n                    android:textSize=\"14sp\"\n                    android:textColor=\"#757575\"\n                    tools:text=\"By Author • May 25, 2025\" />\n\n                <!-- Description -->\n                <TextView\n                    android:id=\"@+id/text_description\"\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"wrap_content\"\n                    android:layout_marginTop=\"16dp\"\n                    android:textSize=\"16sp\"\n                    android:textColor=\"#424242\"\n                    android:lineSpacingExtra=\"4dp\"\n                    tools:text=\"Article description goes here. This is a sample description to show how the text will look in the detail view.\" />\n\n                <!-- Progress Bar -->\n                <ProgressBar\n                    android:id=\"@+id/progress_bar\"\n                    android:layout_width=\"wrap_content\"\n                    android:layout_height=\"wrap_content\"\n                    android:layout_gravity=\"center\"\n                    android:layout_marginTop=\"16dp\"\n                    android:visibility=\"gone\" />\n\n                <!-- WebView Container -->\n                <FrameLayout\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"400dp\"\n                    android:layout_marginTop=\"16dp\"\n                    android:background=\"#F5F5F5\">\n\n                    <WebView\n                        android:id=\"@+id/web_view\"\n                        android:layout_width=\"match_parent\"\n                        android:layout_height=\"match_parent\" />\n\n                </FrameLayout>\n\n            </LinearLayout>\n\n        </LinearLayout>\n\n    </ScrollView>\n\n    <!-- Bottom Action Buttons -->\n    <LinearLayout\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:orientation=\"horizontal\"\n        android:padding=\"16dp\"\n        android:background=\"#FAFAFA\">\n\n        <Button\n            android:id=\"@+id/fab_share\"\n            android:layout_width=\"0dp\"\n            android:layout_height=\"wrap_content\"\n            android:layout_weight=\"1\"\n            android:layout_marginEnd=\"8dp\"\n            android:text=\"Share\"\n            android:backgroundTint=\"#FF9800\"\n            android:textColor=\"#FFFFFF\" />\n\n        <Button\n            android:id=\"@+id/fab_open_browser\"\n            android:layout_width=\"0dp\"\n            android:layout_height=\"wrap_content\"\n            android:layout_weight=\"1\"\n            android:layout_marginStart=\"8dp\"\n            android:text=\"Open in Browser\"\n            android:backgroundTint=\"#4CAF50\"\n            android:textColor=\"#FFFFFF\" />\n\n    </LinearLayout>\n\n</LinearLayout>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_detail.xml b/app/src/main/res/layout/activity_detail.xml
+--- a/app/src/main/res/layout/activity_detail.xml	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/res/layout/activity_detail.xml	(date 1748504806926)
+@@ -16,20 +16,6 @@
+         app:titleTextColor="#FFFFFF"
+         app:navigationIcon="?attr/homeAsUpIndicator">
+ 
+-        <!-- Favorite Toggle Button in Toolbar -->
+-        <ImageView
+-            android:id="@+id/btn_favorite"
+-            android:layout_width="24dp"
+-            android:layout_height="24dp"
+-            android:layout_gravity="end"
+-            android:layout_marginEnd="16dp"
+-            android:src="@drawable/ic_favorite_border"
+-            android:contentDescription="Toggle favorite"
+-            android:clickable="true"
+-            android:focusable="true"
+-            android:background="?android:attr/selectableItemBackgroundBorderless"
+-            android:padding="4dp" />
+-
+     </androidx.appcompat.widget.Toolbar>
+ 
+     <!-- Content ScrollView -->
+Index: app/src/main/res/drawable/ic_search_big.xml
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_search_big.xml b/app/src/main/res/drawable/ic_search_big.xml
+deleted file mode 100644
+--- a/app/src/main/res/drawable/ic_search_big.xml	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ /dev/null	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
+@@ -1,10 +0,0 @@
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="64dp"
+-    android:height="64dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?attr/colorOnSurfaceVariant">
+-    <path
+-        android:fillColor="@android:color/white"
+-        android:pathData="M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19l-4.99,-5zM9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z"/>
+-</vector>
+\ No newline at end of file
+Index: gradle/libs.versions.toml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>[versions]\nagp = \"8.10.0\"\njunit = \"4.13.2\"\njunitVersion = \"1.2.1\"\nespressoCore = \"3.6.1\"\nappcompat = \"1.7.0\"\nmaterial = \"1.12.0\"\nactivity = \"1.10.1\"\nconstraintlayout = \"2.2.1\"\n\n[libraries]\njunit = { group = \"junit\", name = \"junit\", version.ref = \"junit\" }\next-junit = { group = \"androidx.test.ext\", name = \"junit\", version.ref = \"junitVersion\" }\nespresso-core = { group = \"androidx.test.espresso\", name = \"espresso-core\", version.ref = \"espressoCore\" }\nappcompat = { group = \"androidx.appcompat\", name = \"appcompat\", version.ref = \"appcompat\" }\nmaterial = { group = \"com.google.android.material\", name = \"material\", version.ref = \"material\" }\nactivity = { group = \"androidx.activity\", name = \"activity\", version.ref = \"activity\" }\nconstraintlayout = { group = \"androidx.constraintlayout\", name = \"constraintlayout\", version.ref = \"constraintlayout\" }\n\n[plugins]\nandroid-application = { id = \"com.android.application\", version.ref = \"agp\" }\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+--- a/gradle/libs.versions.toml	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/gradle/libs.versions.toml	(date 1748497773867)
+@@ -1,5 +1,5 @@
+ [versions]
+-agp = "8.10.0"
++agp = "8.10.1"
+ junit = "4.13.2"
+ junitVersion = "1.2.1"
+ espressoCore = "3.6.1"
+Index: app/src/main/res/drawable/ic_launcher_background.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\n<vector xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:width=\"108dp\"\n    android:height=\"108dp\"\n    android:viewportWidth=\"108\"\n    android:viewportHeight=\"108\">\n    <path\n        android:fillColor=\"#3DDC84\"\n        android:pathData=\"M0,0h108v108h-108z\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M9,0L9,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,0L19,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M29,0L29,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M39,0L39,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M49,0L49,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M59,0L59,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M69,0L69,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M79,0L79,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M89,0L89,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M99,0L99,108\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,9L108,9\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,19L108,19\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,29L108,29\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,39L108,39\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,49L108,49\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,59L108,59\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,69L108,69\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,79L108,79\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,89L108,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M0,99L108,99\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,29L89,29\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,39L89,39\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,49L89,49\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,59L89,59\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,69L89,69\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M19,79L89,79\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M29,19L29,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M39,19L39,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M49,19L49,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M59,19L59,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M69,19L69,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n    <path\n        android:fillColor=\"#00000000\"\n        android:pathData=\"M79,19L79,89\"\n        android:strokeWidth=\"0.8\"\n        android:strokeColor=\"#33FFFFFF\" />\n</vector>\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_launcher_background.xml b/app/src/main/res/drawable/ic_launcher_background.xml
+--- a/app/src/main/res/drawable/ic_launcher_background.xml	(revision 589d58cbb11065fc14121b1ec8b5a2d12298d449)
++++ b/app/src/main/res/drawable/ic_launcher_background.xml	(date 1748388117171)
+@@ -1,170 +1,74 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="108dp"
++<vector
+     android:height="108dp"
++    android:width="108dp"
++    android:viewportHeight="108"
+     android:viewportWidth="108"
+-    android:viewportHeight="108">
+-    <path
+-        android:fillColor="#3DDC84"
+-        android:pathData="M0,0h108v108h-108z" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M9,0L9,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,0L19,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M29,0L29,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M39,0L39,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M49,0L49,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M59,0L59,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M69,0L69,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M79,0L79,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M89,0L89,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M99,0L99,108"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,9L108,9"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,19L108,19"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,29L108,29"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,39L108,39"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,49L108,49"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,59L108,59"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,69L108,69"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,79L108,79"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,89L108,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M0,99L108,99"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,29L89,29"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,39L89,39"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,49L89,49"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,59L89,59"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,69L89,69"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M19,79L89,79"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M29,19L29,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M39,19L39,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M49,19L49,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M59,19L59,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M69,19L69,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
+-    <path
+-        android:fillColor="#00000000"
+-        android:pathData="M79,19L79,89"
+-        android:strokeWidth="0.8"
+-        android:strokeColor="#33FFFFFF" />
++    xmlns:android="http://schemas.android.com/apk/res/android">
++    <path android:fillColor="#3DDC84"
++          android:pathData="M0,0h108v108h-108z"/>
++    <path android:fillColor="#00000000" android:pathData="M9,0L9,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,0L19,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M29,0L29,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M39,0L39,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M49,0L49,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M59,0L59,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M69,0L69,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M79,0L79,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M89,0L89,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M99,0L99,108"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,9L108,9"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,19L108,19"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,29L108,29"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,39L108,39"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,49L108,49"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,59L108,59"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,69L108,69"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,79L108,79"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,89L108,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M0,99L108,99"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,29L89,29"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,39L89,39"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,49L89,49"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,59L89,59"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,69L89,69"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M19,79L89,79"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M29,19L29,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M39,19L39,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M49,19L49,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M59,19L59,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M69,19L69,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
++    <path android:fillColor="#00000000" android:pathData="M79,19L79,89"
++          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
+ </vector>
