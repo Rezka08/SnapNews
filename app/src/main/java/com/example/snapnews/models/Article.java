@@ -1,12 +1,8 @@
 package com.example.snapnews.models;
 
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
 import com.google.gson.annotations.SerializedName;
 
-@Entity(tableName = "articles")
 public class Article {
-    @PrimaryKey(autoGenerate = true)
     private int id;
 
     @SerializedName("title")
@@ -49,9 +45,9 @@ public class Article {
         this.content = content;
         this.author = author;
         this.source = source;
+        this.timestamp = System.currentTimeMillis(); // Set timestamp saat dibuat
     }
 
-    // Getters and Setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
@@ -84,4 +80,15 @@ public class Article {
 
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+
+    @Override
+    public String toString() {
+        return "Article{" +
+                "id=" + id +
+                ", title='" + title + '\'' +
+                ", url='" + url + '\'' +
+                ", isFavorite=" + isFavorite +
+                ", timestamp=" + timestamp +
+                '}';
+    }
 }
