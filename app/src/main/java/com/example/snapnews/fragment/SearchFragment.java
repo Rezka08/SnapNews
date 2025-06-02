@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,7 +18,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.snapnews.adapter.NewsAdapter;
 import com.example.snapnews.database.ArticleDao;
-import com.example.snapnews.database.NewsDatabase;
+import com.example.snapnews.database.NewsDatabaseHelper;
 import com.example.snapnews.databinding.FragmentSearchBinding;
 import com.example.snapnews.models.Article;
 import com.example.snapnews.models.NewsResponse;
@@ -33,11 +34,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class SearchFragment extends Fragment {
+    private static final String TAG = "SearchFragment";
     private FragmentSearchBinding binding;
     private NewsAdapter newsAdapter;
     private List<Article> searchResults = new ArrayList<>();
     private NewsApiService newsApiService;
     private ArticleDao articleDao;
+    private NewsDatabaseHelper dbHelper;
     private ExecutorService executorService;
     private Handler mainHandler;
     private Handler searchHandler;
@@ -62,11 +65,16 @@ public class SearchFragment extends Fragment {
 
     private void initializeComponents() {
         newsApiService = RetrofitClient.getNewsApiService();
-        NewsDatabase database = NewsDatabase.getDatabase(requireContext());
-        articleDao = database.articleDao();
+
+        // PERUBAHAN: Inisialisasi SQLite Database Helper
+        dbHelper = NewsDatabaseHelper.getInstance(requireContext());
+        articleDao = new ArticleDao(dbHelper);
+
         executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
         searchHandler = new Handler(Looper.getMainLooper());
+
+        Log.d(TAG, "Components initialized with SQLite database");
     }
 
     private void setupRecyclerView() {
@@ -78,6 +86,8 @@ public class SearchFragment extends Fragment {
 
         binding.recyclerViewSearch.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerViewSearch.setAdapter(newsAdapter);
+
+        Log.d(TAG, "RecyclerView setup completed");
     }
 
     private void setupSearchView() {
@@ -120,16 +130,19 @@ public class SearchFragment extends Fragment {
         if (query.equals(currentQuery)) return;
 
         currentQuery = query;
+        Log.d(TAG, "Performing search for: " + query);
 
         if (isNetworkAvailable()) {
             searchOnline(query);
         } else {
+            Log.w(TAG, "No network available, searching offline in SQLite");
             searchOffline(query);
         }
     }
 
     private void searchOnline(String query) {
         showLoading();
+        Log.d(TAG, "Searching online for: " + query);
 
         Call<NewsResponse> call = newsApiService.searchNews(
                 query,
@@ -142,12 +155,15 @@ public class SearchFragment extends Fragment {
         call.enqueue(new Callback<NewsResponse>() {
             @Override
             public void onResponse(@NonNull Call<NewsResponse> call, @NonNull Response<NewsResponse> response) {
+                Log.d(TAG, "Search API response received for query: " + query);
                 hideLoading();
 
                 if (response.isSuccessful() && response.body() != null) {
                     NewsResponse newsResponse = response.body();
 
                     if ("ok".equals(newsResponse.getStatus()) && newsResponse.getArticles() != null) {
+                        Log.d(TAG, "Search found " + newsResponse.getArticles().size() + " articles online");
+
                         searchResults.clear();
                         searchResults.addAll(newsResponse.getArticles());
                         newsAdapter.notifyDataSetChanged();
@@ -158,15 +174,18 @@ public class SearchFragment extends Fragment {
                             showResults();
                         }
                     } else {
+                        Log.e(TAG, "Search API error: " + newsResponse.getMessage());
                         showError("Search Error", newsResponse.getMessage());
                     }
                 } else {
+                    Log.e(TAG, "Search API response not successful: " + response.code());
                     showError("Search Error", "Failed to search news");
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<NewsResponse> call, @NonNull Throwable t) {
+                Log.e(TAG, "Search API call failed", t);
                 hideLoading();
                 showError("Network Error", "Please check your internet connection");
                 searchOffline(query);
@@ -176,71 +195,103 @@ public class SearchFragment extends Fragment {
 
     private void searchOffline(String query) {
         showLoading();
+        Log.d(TAG, "Searching offline in SQLite for: " + query);
 
         executorService.execute(() -> {
-            List<Article> results = articleDao.searchArticles(query);
+            try {
+                List<Article> results = articleDao.searchArticles(query);
 
-            mainHandler.post(() -> {
-                hideLoading();
+                mainHandler.post(() -> {
+                    hideLoading();
 
-                searchResults.clear();
-                if (results != null) {
-                    searchResults.addAll(results);
-                }
-                newsAdapter.notifyDataSetChanged();
+                    searchResults.clear();
+                    if (results != null && !results.isEmpty()) {
+                        Log.d(TAG, "Found " + results.size() + " articles in SQLite for query: " + query);
+                        searchResults.addAll(results);
+                        newsAdapter.notifyDataSetChanged();
+                        showResults();
+                    } else {
+                        Log.d(TAG, "No offline results found in SQLite for query: " + query);
+                        showEmptyState("No offline results", "Connect to internet for more results");
+                    }
+                });
 
-                if (searchResults.isEmpty()) {
-                    showEmptyState("No offline results", "Connect to internet for more results");
-                } else {
-                    showResults();
-                }
-            });
+            } catch (Exception e) {
+                Log.e(TAG, "Error searching in SQLite database", e);
+                mainHandler.post(() -> {
+                    hideLoading();
+                    showError("Database Error", "Error searching cached news");
+                });
+            }
         });
     }
 
     private void showInitialState() {
-        binding.layoutInitial.setVisibility(View.VISIBLE);
-        binding.recyclerViewSearch.setVisibility(View.GONE);
-        binding.progressBar.setVisibility(View.GONE);
-        binding.layoutEmpty.setVisibility(View.GONE);
-        searchResults.clear();
-        newsAdapter.notifyDataSetChanged();
+        Log.d(TAG, "Showing initial state");
+        if (binding != null) {
+            binding.layoutInitial.setVisibility(View.VISIBLE);
+            binding.recyclerViewSearch.setVisibility(View.GONE);
+            binding.progressBar.setVisibility(View.GONE);
+            binding.layoutEmpty.setVisibility(View.GONE);
+            searchResults.clear();
+            newsAdapter.notifyDataSetChanged();
+        }
     }
 
     private void showLoading() {
-        binding.layoutInitial.setVisibility(View.GONE);
-        binding.recyclerViewSearch.setVisibility(View.GONE);
-        binding.progressBar.setVisibility(View.VISIBLE);
-        binding.layoutEmpty.setVisibility(View.GONE);
+        Log.d(TAG, "Showing loading state");
+        if (binding != null) {
+            binding.layoutInitial.setVisibility(View.GONE);
+            binding.recyclerViewSearch.setVisibility(View.GONE);
+            binding.progressBar.setVisibility(View.VISIBLE);
+            binding.layoutEmpty.setVisibility(View.GONE);
+        }
     }
 
     private void hideLoading() {
-        binding.progressBar.setVisibility(View.GONE);
+        Log.d(TAG, "Hiding loading state");
+        if (binding != null) {
+            binding.progressBar.setVisibility(View.GONE);
+        }
     }
 
     private void showResults() {
-        binding.layoutInitial.setVisibility(View.GONE);
-        binding.recyclerViewSearch.setVisibility(View.VISIBLE);
-        binding.layoutEmpty.setVisibility(View.GONE);
+        Log.d(TAG, "Showing search results - Count: " + searchResults.size());
+        if (binding != null) {
+            binding.layoutInitial.setVisibility(View.GONE);
+            binding.recyclerViewSearch.setVisibility(View.VISIBLE);
+            binding.layoutEmpty.setVisibility(View.GONE);
+        }
     }
 
     private void showEmptyState(String title, String message) {
-        binding.layoutInitial.setVisibility(View.GONE);
-        binding.recyclerViewSearch.setVisibility(View.GONE);
-        binding.layoutEmpty.setVisibility(View.VISIBLE);
-        binding.textEmptyTitle.setText(title);
-        binding.textEmptyMessage.setText(message);
+        Log.d(TAG, "Showing empty state: " + title);
+        if (binding != null) {
+            binding.layoutInitial.setVisibility(View.GONE);
+            binding.recyclerViewSearch.setVisibility(View.GONE);
+            binding.layoutEmpty.setVisibility(View.VISIBLE);
+            binding.textEmptyTitle.setText(title);
+            binding.textEmptyMessage.setText(message);
+        }
     }
 
     private void showError(String title, String message) {
+        Log.e(TAG, "Showing error: " + title + " - " + message);
         showEmptyState(title, message);
     }
 
     private boolean isNetworkAvailable() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        try {
+            ConnectivityManager connectivityManager =
+                    (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            boolean result = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+            Log.d(TAG, "Network available: " + result);
+            return result;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking network", e);
+            return false;
+        }
     }
 
     @Override
@@ -253,5 +304,6 @@ public class SearchFragment extends Fragment {
             searchHandler.removeCallbacks(searchRunnable);
         }
         binding = null;
+        Log.d(TAG, "SearchFragment destroyed - SQLite connections will be closed automatically");
     }
 }
