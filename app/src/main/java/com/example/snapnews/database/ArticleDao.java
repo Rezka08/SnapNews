@@ -132,15 +132,24 @@ public class ArticleDao {
         return articles;
     }
 
-    // INSERT ARTICLE
+    // INSERT ARTICLE - PRESERVE EXISTING FAVORITE STATUS
     public void insertArticle(Article article) {
         SQLiteDatabase db = null;
 
         try {
             db = dbHelper.getWritableDatabase();
+
+            // CRITICAL: Check if article already exists and preserve favorite status
+            Article existingArticle = getArticleByUrlInternal(db, article.getUrl());
+            if (existingArticle != null) {
+                // Preserve favorite status from existing article
+                article.setFavorite(existingArticle.isFavorite());
+                article.setId(existingArticle.getId());
+                Log.d(TAG, "Preserving favorite status: " + article.isFavorite() + " for article: " + article.getTitle());
+            }
+
             ContentValues values = articleToContentValues(article);
 
-            // Use INSERT OR REPLACE untuk handle conflict
             long result = db.insertWithOnConflict(
                     NewsDatabaseHelper.TABLE_ARTICLES,
                     null,
@@ -149,7 +158,7 @@ public class ArticleDao {
             );
 
             if (result != -1) {
-                Log.d(TAG, "Article inserted successfully with ID: " + result);
+                Log.d(TAG, "Article inserted/updated successfully with ID: " + result);
             } else {
                 Log.e(TAG, "Failed to insert article");
             }
@@ -162,7 +171,7 @@ public class ArticleDao {
         }
     }
 
-    // INSERT MULTIPLE ARTICLES
+    // INSERT MULTIPLE ARTICLES - PRESERVE EXISTING FAVORITE STATUS
     public void insertArticles(List<Article> articles) {
         SQLiteDatabase db = null;
 
@@ -171,6 +180,14 @@ public class ArticleDao {
             db.beginTransaction();
 
             for (Article article : articles) {
+                // CRITICAL: Check and preserve favorite status for each article
+                Article existingArticle = getArticleByUrlInternal(db, article.getUrl());
+                if (existingArticle != null) {
+                    // Preserve favorite status
+                    article.setFavorite(existingArticle.isFavorite());
+                    Log.d(TAG, "Preserving favorite status: " + article.isFavorite() + " for: " + article.getTitle());
+                }
+
                 ContentValues values = articleToContentValues(article);
                 db.insertWithOnConflict(
                         NewsDatabaseHelper.TABLE_ARTICLES,
@@ -181,7 +198,7 @@ public class ArticleDao {
             }
 
             db.setTransactionSuccessful();
-            Log.d(TAG, "Successfully inserted " + articles.size() + " articles");
+            Log.d(TAG, "Successfully inserted " + articles.size() + " articles with preserved favorites");
 
         } catch (Exception e) {
             Log.e(TAG, "Error inserting articles", e);
@@ -193,7 +210,7 @@ public class ArticleDao {
         }
     }
 
-    // UPDATE ARTICLE
+    // UPDATE ARTICLE - SPECIFICALLY FOR FAVORITE TOGGLE
     public void updateArticle(Article article) {
         SQLiteDatabase db = null;
 
@@ -208,9 +225,35 @@ public class ArticleDao {
                     new String[]{article.getUrl()}
             );
 
-            Log.d(TAG, "Updated " + rowsAffected + " articles");
+            Log.d(TAG, "Updated " + rowsAffected + " articles - Favorite status: " + article.isFavorite());
         } catch (Exception e) {
             Log.e(TAG, "Error updating article", e);
+        } finally {
+            if (db != null) {
+                db.close();
+            }
+        }
+    }
+
+    // UPDATE FAVORITE STATUS ONLY
+    public void updateFavoriteStatus(String url, boolean isFavorite) {
+        SQLiteDatabase db = null;
+
+        try {
+            db = dbHelper.getWritableDatabase();
+            ContentValues values = new ContentValues();
+            values.put(NewsDatabaseHelper.COLUMN_IS_FAVORITE, isFavorite ? 1 : 0);
+
+            int rowsAffected = db.update(
+                    NewsDatabaseHelper.TABLE_ARTICLES,
+                    values,
+                    NewsDatabaseHelper.COLUMN_URL + " = ?",
+                    new String[]{url}
+            );
+
+            Log.d(TAG, "Updated favorite status for " + rowsAffected + " articles to: " + isFavorite);
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating favorite status", e);
         } finally {
             if (db != null) {
                 db.close();
@@ -240,19 +283,32 @@ public class ArticleDao {
         }
     }
 
-    // DELETE NON-FAVORITE ARTICLES
+    // DELETE NON-FAVORITE ARTICLES - IMPROVED VERSION
     public void deleteNonFavoriteArticles() {
         SQLiteDatabase db = null;
 
         try {
             db = dbHelper.getWritableDatabase();
+
+            // Get count of favorites before deletion for logging
+            Cursor favoriteCursor = db.rawQuery(
+                    "SELECT COUNT(*) FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
+                            " WHERE " + NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 1", null);
+
+            int favoriteCount = 0;
+            if (favoriteCursor.moveToFirst()) {
+                favoriteCount = favoriteCursor.getInt(0);
+            }
+            favoriteCursor.close();
+
+            // Delete non-favorites
             int rowsDeleted = db.delete(
                     NewsDatabaseHelper.TABLE_ARTICLES,
                     NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 0",
                     null
             );
 
-            Log.d(TAG, "Deleted " + rowsDeleted + " non-favorite articles");
+            Log.d(TAG, "Deleted " + rowsDeleted + " non-favorite articles, preserved " + favoriteCount + " favorites");
         } catch (Exception e) {
             Log.e(TAG, "Error deleting non-favorite articles", e);
         } finally {
@@ -262,13 +318,24 @@ public class ArticleDao {
         }
     }
 
-    // GET ARTICLE BY URL
+    // GET ARTICLE BY URL - PUBLIC METHOD
     public Article getArticleByUrl(String url) {
         SQLiteDatabase db = null;
+        try {
+            db = dbHelper.getReadableDatabase();
+            return getArticleByUrlInternal(db, url);
+        } finally {
+            if (db != null) {
+                db.close();
+            }
+        }
+    }
+
+    // GET ARTICLE BY URL - INTERNAL METHOD (REUSES DB CONNECTION)
+    private Article getArticleByUrlInternal(SQLiteDatabase db, String url) {
         Cursor cursor = null;
 
         try {
-            db = dbHelper.getReadableDatabase();
             String query = "SELECT * FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
                     " WHERE " + NewsDatabaseHelper.COLUMN_URL + " = ? LIMIT 1";
 
@@ -276,7 +343,7 @@ public class ArticleDao {
 
             if (cursor.moveToFirst()) {
                 Article article = cursorToArticle(cursor);
-                Log.d(TAG, "Found article by URL: " + url);
+                Log.d(TAG, "Found article by URL: " + url + ", Favorite: " + (article != null ? article.isFavorite() : "null"));
                 return article;
             }
         } catch (Exception e) {
@@ -284,9 +351,6 @@ public class ArticleDao {
         } finally {
             if (cursor != null) {
                 cursor.close();
-            }
-            if (db != null) {
-                db.close();
             }
         }
 
@@ -315,7 +379,10 @@ public class ArticleDao {
                 article.setSource(source);
             }
 
-            article.setFavorite(cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_IS_FAVORITE)) == 1);
+            // CRITICAL: Properly set favorite status
+            int favoriteInt = cursor.getInt(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_IS_FAVORITE));
+            article.setFavorite(favoriteInt == 1);
+
             article.setTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(NewsDatabaseHelper.COLUMN_TIMESTAMP)));
 
             return article;
@@ -347,9 +414,39 @@ public class ArticleDao {
             values.putNull(NewsDatabaseHelper.COLUMN_SOURCE_NAME);
         }
 
+        // CRITICAL: Properly save favorite status
         values.put(NewsDatabaseHelper.COLUMN_IS_FAVORITE, article.isFavorite() ? 1 : 0);
         values.put(NewsDatabaseHelper.COLUMN_TIMESTAMP, article.getTimestamp());
 
         return values;
+    }
+
+    // DEBUG: Method to check favorite count
+    public int getFavoriteCount() {
+        SQLiteDatabase db = null;
+        Cursor cursor = null;
+
+        try {
+            db = dbHelper.getReadableDatabase();
+            cursor = db.rawQuery("SELECT COUNT(*) FROM " + NewsDatabaseHelper.TABLE_ARTICLES +
+                    " WHERE " + NewsDatabaseHelper.COLUMN_IS_FAVORITE + " = 1", null);
+
+            if (cursor.moveToFirst()) {
+                int count = cursor.getInt(0);
+                Log.d(TAG, "Current favorite count: " + count);
+                return count;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting favorite count", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+            if (db != null) {
+                db.close();
+            }
+        }
+
+        return 0;
     }
 }
