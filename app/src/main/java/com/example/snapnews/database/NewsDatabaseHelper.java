@@ -35,7 +35,7 @@ public class NewsDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     COLUMN_TITLE + " TEXT, " +
                     COLUMN_DESCRIPTION + " TEXT, " +
-                    COLUMN_URL + " TEXT UNIQUE, " + // URL sebagai unique identifier
+                    COLUMN_URL + " TEXT UNIQUE, " +
                     COLUMN_URL_TO_IMAGE + " TEXT, " +
                     COLUMN_PUBLISHED_AT + " TEXT, " +
                     COLUMN_CONTENT + " TEXT, " +
