@@ -39,8 +39,7 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        setSupportActionBar(binding.toolbar);
-
+        setupToolbar();
         setupBottomNavigation();
         setupSharedPreferences();
     }
@@ -74,19 +73,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setupToolbar() {
+        setSupportActionBar(binding.toolbar);
+
+        // FIXED: Disable default title dan pastikan custom title yang muncul
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
+        }
+
+        // Set custom title
+        binding.toolbarTitle.setText(getString(R.string.app_name));
+    }
+
     private void setupBottomNavigation() {
         BottomNavigationView navView = binding.navView;
 
         // Setup navigation controller
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
 
-        // Setup app bar configuration
+        // FIXED: Setup app bar configuration WITHOUT automatic title changes
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_search, R.id.navigation_favorites)
                 .build();
 
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+        // FIXED: Only setup bottom navigation, NOT the action bar
+        // NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(navView, navController);
+
+        // FIXED: Listen untuk fragment changes dan maintain title
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            // Always keep SnapNews as title regardless of destination
+            binding.toolbarTitle.setText(getString(R.string.app_name));
+        });
     }
 
     private void setupSharedPreferences() {
