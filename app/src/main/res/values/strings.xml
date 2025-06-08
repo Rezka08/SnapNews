@@ -1,18 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App Info -->
     <string name="app_name">SnapNews</string>
+
+    <!-- Navigation -->
     <string name="home">Home</string>
     <string name="search">Search</string>
     <string name="favorites">Favorites</string>
+    <string name="settings">Settings</string>
+
+    <!-- Categories -->
     <string name="categories">Categories</string>
     <string name="latest">Latest</string>
-    <string name="indonesia">Indonesia</string>
+    <string name="business">Business</string>
+    <string name="technology">Technology</string>
     <string name="entertainment">Entertainment</string>
     <string name="sports">Sports</string>
-    <string name="economics">Economics</string>
-    <string name="politics">Politics</string>
-    <string name="loading_news">Loading news...</string>
-    <string name="showing_news">Showing %s news</string>
+    <string name="health">Health</string>
+    <string name="science">Science</string>
+
+    <!-- Search -->
+    <string name="search_news">Search news...</string>
+    <string name="search_for_news">Search for News</string>
+    <string name="search_description">Find news by category or search for specific topics</string>
+    <string name="search_icon">Search icon</string>
+    <string name="no_results">No Results Found</string>
+    <string name="try_different_keywords">Try different keywords or category</string>
+    <string name="no_results_icon">No results icon</string>
+
+    <!-- Favorites -->
+    <string name="no_favorites">No Favorites Yet</string>
+    <string name="add_favorites_description">Save articles to read later by tapping the heart icon</string>
+    <string name="no_favorites_icon">No favorites icon</string>
+    <string name="added_to_favorites">Added to favorites</string>
+    <string name="removed_from_favorites">Removed from favorites</string>
 
     <!-- Detail Activity -->
     <string name="article_image">Article image</string>
@@ -20,24 +41,82 @@
     <string name="open_in_browser">Open in browser</string>
     <string name="favorite_icon">Favorite icon</string>
     <string name="news_image">News image</string>
+    <string name="reading_mode">Reading Mode</string>
+    <string name="full_article">Full Article</string>
+    <string name="summary">Summary</string>
+    <string name="tap_to_read_full">Tap to read full article</string>
+    <string name="showing_full_article">Showing full article</string>
+    <string name="read_full_article">Read full article →</string>
+
+    <!-- Time and Reading -->
+    <string name="min_read">%d min read</string>
+    <string name="time_ago_just_now">Just now</string>
+    <string name="time_ago_minute">1 minute ago</string>
+    <string name="time_ago_minutes">%d minutes ago</string>
+    <string name="time_ago_hour">1 hour ago</string>
+    <string name="time_ago_hours">%d hours ago</string>
+    <string name="time_ago_day">1 day ago</string>
+    <string name="time_ago_days">%d days ago</string>
+
+    <!-- Loading and Status -->
+    <string name="loading_news">Loading news...</string>
+    <string name="refreshing">Refreshing...</string>
+    <string name="showing_news">Showing %s news</string>
+    <string name="articles_loaded">✅ %1$s: %2$d articles loaded</string>
+    <string name="offline_cached">📱 Offline: showing cached %s news</string>
+    <string name="popular_news_loaded">📰 Showing %d articles</string>
+    <string name="search_results_found">🔍 Found %d results for \'%s\'</string>
+    <string name="category_changed">Category changed to %s</string>
+    <string name="loading_popular_news">Loading popular news</string>
 
     <!-- Error messages -->
     <string name="error_title">Something went wrong</string>
     <string name="error_message">Please try again</string>
     <string name="error_icon">Error icon</string>
     <string name="retry">Retry</string>
+    <string name="network_error">Network Error</string>
+    <string name="check_internet">Please check your internet connection</string>
+    <string name="server_error">Server Error</string>
+    <string name="api_key_error">API Key Error</string>
+    <string name="check_api_key">Please check your API key configuration</string>
+    <string name="no_cached_news">No cached news available</string>
+    <string name="connect_and_refresh">Connect to internet and pull down to refresh</string>
+    <string name="no_cached_articles">No cached articles</string>
+    <string name="connect_for_latest">Connect to internet for latest news</string>
+    <string name="try_different_category">Try different category or check back later</string>
 
-    <!-- Search -->
-    <string name="search_news">Search news...</string>
-    <string name="search_for_news">Search for News</string>
-    <string name="search_description">Find the latest news on any topic</string>
-    <string name="search_icon">Search icon</string>
-    <string name="no_results">No Results Found</string>
-    <string name="try_different_keywords">Try searching with different keywords</string>
-    <string name="no_results_icon">No results icon</string>
+    <!-- Settings -->
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="choose_theme">Choose Theme</string>
+    <string name="light_theme">Light</string>
+    <string name="dark_theme">Dark</string>
+    <string name="system_theme">Match System</string>
+    <string name="theme_light_desc">Always use light theme</string>
+    <string name="theme_dark_desc">Always use dark theme</string>
+    <string name="theme_system_desc">Follow system setting</string>
+    <string name="about">About</string>
+    <string name="version">Version</string>
+    <string name="developed_with_love">Developed by Rezka Wildan️</string>
+    <string name="powered_by_newsapi">Powered by NewsAPI.org</string>
+    <string name="cancel">Cancel</string>
 
-    <!-- Favorites -->
-    <string name="no_favorites">No Favorites Yet</string>
-    <string name="add_favorites_description">Save articles to read later by tapping the heart icon</string>
-    <string name="no_favorites_icon">No favorites icon</string>
+    <!-- Content Descriptions -->
+    <string name="time_icon">Time icon</string>
+    <string name="author_icon">Author icon</string>
+    <string name="article_icon">Article icon</string>
+    <string name="chevron_right">Chevron right</string>
+    <string name="info_icon">Info icon</string>
+    <string name="theme_icon">Theme icon</string>
+    <string name="settings_icon">Settings icon</string>
+
+    <!-- Share -->
+    <string name="share">Share</string>
+    <string name="share_via">Share via</string>
+    <string name="bookmark">Bookmark</string>
+    <string name="bookmarked">Bookmarked</string>
+
+    <!-- Notifications (if needed later) -->
+    <string name="notification_title">SnapNews</string>
+    <string name="notification_text">Check out the latest news</string>
 </resources>
