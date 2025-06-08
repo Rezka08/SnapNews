@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- layout/activity_detail.xml - Fixed version with compatible attributes -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -10,7 +9,8 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:paddingTop="8dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -32,7 +32,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingBottom="80dp">
 
             <!-- Article Header -->
             <com.google.android.material.card.MaterialCardView
@@ -113,7 +114,7 @@
                             android:layout_height="wrap_content"
                             android:textSize="24sp"
                             android:textStyle="bold"
-                            android:textColor="@color/black"
+                            android:textColor="?attr/colorOnSurface"
                             android:lineSpacingExtra="4dp"
                             tools:text="Breaking News: Revolutionary Technology Announced" />
 
@@ -139,7 +140,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:textSize="14sp"
-                                android:textColor="@color/gray"
+                                android:textColor="?attr/colorOnSurfaceVariant"
                                 tools:text="By John Doe • 2 hours ago" />
 
                         </LinearLayout>
@@ -151,7 +152,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
                             android:textSize="16sp"
-                            android:textColor="@color/dark_gray"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:lineSpacingExtra="4dp"
                             tools:text="Detailed description of the news article that provides important context and background information for readers." />
 
@@ -198,7 +199,7 @@
                             android:text="Reading Mode"
                             android:textStyle="bold"
                             android:textSize="14sp"
-                            android:textColor="@color/black" />
+                            android:textColor="?attr/colorOnSurface" />
 
                         <TextView
                             android:id="@+id/text_mode_description"
@@ -206,7 +207,7 @@
                             android:layout_height="wrap_content"
                             android:text="Tap to read full article"
                             android:textSize="12sp"
-                            android:textColor="@color/gray" />
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                     </LinearLayout>
 
