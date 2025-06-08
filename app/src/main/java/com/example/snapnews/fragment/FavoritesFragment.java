@@ -70,6 +70,12 @@ public class FavoritesFragment extends Fragment {
     }
 
     private void loadFavorites() {
+        // Check if fragment is still valid and executor is available
+        if (!isAdded() || getContext() == null || executorService == null || executorService.isShutdown()) {
+            Log.w(TAG, "Fragment not ready or executor unavailable, skipping favorites load");
+            return;
+        }
+
         showLoading();
 
         executorService.execute(() -> {
@@ -78,33 +84,52 @@ public class FavoritesFragment extends Fragment {
             try {
                 List<Article> favorites = articleDao.getFavoriteArticles();
 
-                mainHandler.post(() -> {
-                    hideLoading();
+                // Check if fragment is still valid before updating UI
+                if (isAdded() && getContext() != null && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        // Double check if fragment is still valid
+                        if (!isAdded() || getContext() == null) {
+                            Log.w(TAG, "Fragment not attached, skipping favorites UI update");
+                            return;
+                        }
 
-                    favoriteArticles.clear();
-                    if (favorites != null && !favorites.isEmpty()) {
-                        Log.d(TAG, "Loaded " + favorites.size() + " favorite articles from SQLite");
-                        favoriteArticles.addAll(favorites);
-                        newsAdapter.notifyDataSetChanged();
-                        showContent();
-                    } else {
-                        Log.d(TAG, "No favorite articles found in SQLite database");
-                        showEmptyState();
-                    }
-                });
+                        hideLoading();
+
+                        favoriteArticles.clear();
+                        if (favorites != null && !favorites.isEmpty()) {
+                            Log.d(TAG, "Loaded " + favorites.size() + " favorite articles from SQLite");
+                            favoriteArticles.addAll(favorites);
+                            newsAdapter.notifyDataSetChanged();
+                            showContent();
+                        } else {
+                            Log.d(TAG, "No favorite articles found in SQLite database");
+                            showEmptyState();
+                        }
+                    });
+                }
 
             } catch (Exception e) {
                 Log.e(TAG, "Error loading favorite articles from SQLite", e);
-                mainHandler.post(() -> {
-                    hideLoading();
-                    showEmptyState();
-                });
+                if (isAdded() && getContext() != null && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        if (isAdded() && getContext() != null) {
+                            hideLoading();
+                            showEmptyState();
+                        }
+                    });
+                }
             }
         });
     }
 
     // Method untuk menambah/menghapus favorite (dipanggil dari DetailActivity)
     public void toggleFavorite(Article article) {
+        // Check if fragment is still valid and executor is available
+        if (!isAdded() || executorService == null || executorService.isShutdown()) {
+            Log.w(TAG, "Fragment not ready or executor unavailable, skipping favorite toggle");
+            return;
+        }
+
         executorService.execute(() -> {
             try {
                 Log.d(TAG, "Toggling favorite status for article: " + article.getTitle());
@@ -118,9 +143,13 @@ public class FavoritesFragment extends Fragment {
                 Log.d(TAG, "Article favorite status updated in SQLite: " + article.isFavorite());
 
                 // Refresh tampilan di main thread
-                mainHandler.post(() -> {
-                    loadFavorites();
-                });
+                if (isAdded() && getContext() != null && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        if (isAdded() && getContext() != null) {
+                            loadFavorites();
+                        }
+                    });
+                }
 
             } catch (Exception e) {
                 Log.e(TAG, "Error toggling favorite status in SQLite", e);
@@ -130,7 +159,7 @@ public class FavoritesFragment extends Fragment {
 
     private void showLoading() {
         Log.d(TAG, "Showing loading state");
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.progressBar.setVisibility(View.VISIBLE);
             binding.recyclerViewFavorites.setVisibility(View.GONE);
             binding.layoutEmpty.setVisibility(View.GONE);
@@ -139,14 +168,14 @@ public class FavoritesFragment extends Fragment {
 
     private void hideLoading() {
         Log.d(TAG, "Hiding loading state");
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.progressBar.setVisibility(View.GONE);
         }
     }
 
     private void showContent() {
         Log.d(TAG, "Showing content - Favorite articles count: " + favoriteArticles.size());
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.recyclerViewFavorites.setVisibility(View.VISIBLE);
             binding.layoutEmpty.setVisibility(View.GONE);
         }
@@ -154,7 +183,7 @@ public class FavoritesFragment extends Fragment {
 
     private void showEmptyState() {
         Log.d(TAG, "Showing empty state");
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.recyclerViewFavorites.setVisibility(View.GONE);
             binding.layoutEmpty.setVisibility(View.VISIBLE);
         }
@@ -169,12 +198,23 @@ public class FavoritesFragment extends Fragment {
     }
 
     @Override
+    public void onDestroyView() {
+        Log.d(TAG, "onDestroyView called");
+        super.onDestroyView();
+        binding = null;
+    }
+
+    @Override
     public void onDestroy() {
-        super.onDestroy();
+        Log.d(TAG, "onDestroy called");
+
+        // Shutdown executor service
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+            Log.d(TAG, "ExecutorService shutdown");
         }
-        binding = null;
+
+        super.onDestroy();
         Log.d(TAG, "FavoritesFragment destroyed - SQLite connections will be closed automatically");
     }
 }
