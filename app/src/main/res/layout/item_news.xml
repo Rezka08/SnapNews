@@ -193,7 +193,7 @@
                     android:alpha="0.6"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Bookmark article"
-                    android:src="@drawable/ic_bookmark_border" />
+                    android:src="@drawable/ic_favorite_border" />
 
             </LinearLayout>
 
