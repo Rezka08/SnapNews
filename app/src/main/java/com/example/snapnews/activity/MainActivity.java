@@ -1,13 +1,10 @@
 package com.example.snapnews.activity;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -19,21 +16,19 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.example.snapnews.R;
 import com.example.snapnews.databinding.ActivityMainBinding;
 import com.example.snapnews.utils.ApiKeyManager;
+import com.example.snapnews.utils.ThemeManager;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
-    private SharedPreferences sharedPreferences;
-    private static final String PREFS_NAME = "SnapNewsPrefs";
-    private static final String KEY_DARK_MODE = "dark_mode";
+    private ThemeManager themeManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Initialize theme before super.onCreate()
-        initializeTheme();
+        themeManager = ThemeManager.getInstance(this);
+        themeManager.initializeTheme();
 
         super.onCreate(savedInstanceState);
 
-        // Validate API key configuration
         validateApiKeyConfiguration();
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -41,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
 
         setupToolbar();
         setupBottomNavigation();
-        setupSharedPreferences();
     }
 
     private void validateApiKeyConfiguration() {
@@ -50,7 +44,6 @@ public class MainActivity extends AppCompatActivity {
                 throw new IllegalStateException("API Key not configured");
             }
         } catch (Exception e) {
-            // Show error dialog and exit
             new androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle("Configuration Error")
                     .setMessage("NEWS_API_KEY not found!\n\n" +
@@ -62,21 +55,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void initializeTheme() {
-        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        boolean isDarkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false);
-
-        if (isDarkMode) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        }
-    }
-
     private void setupToolbar() {
         setSupportActionBar(binding.toolbar);
 
-        // FIXED: Disable default title dan pastikan custom title yang muncul
+        // Disable default title and use custom title
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
@@ -91,65 +73,37 @@ public class MainActivity extends AppCompatActivity {
         // Setup navigation controller
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
 
-        // FIXED: Setup app bar configuration WITHOUT automatic title changes
+        // Setup app bar configuration WITHOUT automatic title changes
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_search, R.id.navigation_favorites)
                 .build();
 
-        // FIXED: Only setup bottom navigation, NOT the action bar
-        // NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+        // Only setup bottom navigation, NOT the action bar
         NavigationUI.setupWithNavController(navView, navController);
 
-        // FIXED: Listen untuk fragment changes dan maintain title
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
-            // Always keep SnapNews as title regardless of destination
             binding.toolbarTitle.setText(getString(R.string.app_name));
         });
-    }
-
-    private void setupSharedPreferences() {
-        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
-
-        // Update theme icon based on current mode
-        MenuItem themeItem = menu.findItem(R.id.action_toggle_theme);
-        boolean isDarkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false);
-        themeItem.setIcon(isDarkMode ? R.drawable.ic_light_mode : R.drawable.ic_dark_mode);
-
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_toggle_theme) {
-            toggleTheme();
+        if (item.getItemId() == R.id.action_settings) {
+            openSettings();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void toggleTheme() {
-        boolean isDarkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false);
-        boolean newMode = !isDarkMode;
-
-        // Save preference
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putBoolean(KEY_DARK_MODE, newMode);
-        editor.apply();
-
-        // Apply theme
-        if (newMode) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        }
-
-        // Recreate activity to apply theme
-        recreate();
+    private void openSettings() {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
     @Override
@@ -172,6 +126,14 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra(DetailActivity.EXTRA_ARTICLE_SOURCE, article.getSource().getName());
         }
         startActivity(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (themeManager != null) {
+            themeManager.initializeTheme();
+        }
     }
 
     @Override
