@@ -1,37 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- === LIGHT THEME COLORS === -->
+
     <!-- Primary Colors -->
     <color name="primary_color">#1976D2</color>
     <color name="primary_dark_color">#1565C0</color>
     <color name="primary_light_color">#BBDEFB</color>
+    <color name="on_primary">#FFFFFF</color>
 
     <!-- Secondary Colors -->
     <color name="secondary_color">#FF9800</color>
     <color name="secondary_dark_color">#F57C00</color>
     <color name="secondary_light_color">#FFE0B2</color>
+    <color name="on_secondary">#000000</color>
 
     <!-- Surface & Background (Light) -->
     <color name="surface_color">#FFFFFF</color>
     <color name="background_color">#FAFAFA</color>
+    <color name="surface_variant_color">#F5F5F5</color>
 
     <!-- Text Colors (Light) -->
-    <color name="on_primary">#FFFFFF</color>
-    <color name="on_secondary">#000000</color>
     <color name="on_surface">#212121</color>
     <color name="on_background">#212121</color>
+    <color name="on_surface_variant">#757575</color>
+
+    <!-- Outline Colors (Light) -->
+    <color name="outline_color">#E0E0E0</color>
+    <color name="outline_variant_color">#F5F5F5</color>
 
     <!-- Error Colors -->
     <color name="error_color">#F44336</color>
     <color name="on_error">#FFFFFF</color>
 
-    <!-- ========== DARK THEME COLORS (MISSING) ========== -->
-    <color name="primary_color_dark">#2196F3</color>
-    <color name="surface_color_dark">#121212</color>
-    <color name="background_color_dark">#000000</color>
+    <!-- === DARK THEME COLORS === -->
+
+    <!-- Primary Colors (Dark) -->
+    <color name="primary_color_dark">#64B5F6</color>
+    <color name="primary_variant_dark">#42A5F5</color>
+    <color name="on_primary_dark">#000000</color>
+
+    <!-- Secondary Colors (Dark) -->
+    <color name="secondary_color_dark">#FFB74D</color>
+    <color name="secondary_variant_dark">#FFA726</color>
+    <color name="on_secondary_dark">#000000</color>
+
+    <!-- Surface & Background (Dark) -->
+    <color name="surface_color_dark">#1E1E1E</color>
+    <color name="background_color_dark">#121212</color>
+    <color name="surface_variant_dark">#2C2C2C</color>
+
+    <!-- Text Colors (Dark) -->
     <color name="on_surface_dark">#FFFFFF</color>
     <color name="on_background_dark">#FFFFFF</color>
+    <color name="on_surface_variant_dark">#CCCCCC</color>
 
-    <!-- Utility Colors -->
+    <!-- Outline Colors (Dark) -->
+    <color name="outline_dark">#3C3C3C</color>
+    <color name="outline_variant_dark">#2C2C2C</color>
+
+    <!-- Error Colors (Dark) -->
+    <color name="error_color_dark">#EF5350</color>
+    <color name="on_error_dark">#000000</color>
+
+    <!-- === UTILITY COLORS === -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="gray">#9E9E9E</color>
@@ -39,25 +70,36 @@
     <color name="dark_gray">#424242</color>
     <color name="transparent">#00000000</color>
 
-    <!-- Additional colors for DetailActivity -->
+    <!-- === SEMANTIC COLORS === -->
     <color name="success_color">#4CAF50</color>
+    <color name="success_color_dark">#66BB6A</color>
     <color name="warning_color">#FF9800</color>
+    <color name="warning_color_dark">#FFB74D</color>
     <color name="info_color">#2196F3</color>
+    <color name="info_color_dark">#64B5F6</color>
 
-    <!-- Reading mode colors -->
-    <color name="reading_bg">#FEFEFE</color>
-    <color name="reading_text">#333333</color>
-    <color name="reading_accent">#1976D2</color>
+    <!-- === BRAND COLORS === -->
+    <color name="cnn_red">#CC0000</color>
+    <color name="bbc_red">#BB1919</color>
+    <color name="reuters_orange">#FF6600</color>
+    <color name="ap_blue">#0066CC</color>
+    <color name="abc_black">#000000</color>
+    <color name="nbc_purple">#9356DC</color>
 
-    <!-- Card colors -->
-    <color name="card_background">#FFFFFF</color>
-    <color name="card_shadow">#1A000000</color>
-
-    <!-- Button state colors -->
-    <color name="button_pressed">#E3F2FD</color>
-    <color name="button_disabled">#BDBDBD</color>
-
-    <!-- Overlay colors -->
+    <!-- === OVERLAY COLORS === -->
     <color name="overlay_dark">#80000000</color>
     <color name="overlay_light">#80FFFFFF</color>
+    <color name="card_shadow">#1A000000</color>
+
+    <!-- === BUTTON STATE COLORS === -->
+    <color name="button_pressed">#E3F2FD</color>
+    <color name="button_pressed_dark">#1E3A5F</color>
+    <color name="button_disabled">#BDBDBD</color>
+    <color name="button_disabled_dark">#424242</color>
+
+    <!-- === READING MODE COLORS === -->
+    <color name="reading_bg">#FEFEFE</color>
+    <color name="reading_bg_dark">#1C1C1C</color>
+    <color name="reading_text">#333333</color>
+    <color name="reading_text_dark">#E0E0E0</color>
 </resources>
