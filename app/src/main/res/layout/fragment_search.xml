@@ -7,6 +7,7 @@
     android:orientation="vertical"
     tools:context=".fragment.SearchFragment">
 
+    <!-- Search Input -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,8 +32,8 @@
                 android:maxLines="1"
                 android:padding="12dp"
                 android:textSize="16sp"
-                android:textColor="#212121"
-                android:textColorHint="#757575" />
+                android:textColor="?attr/colorOnSurface"
+                android:textColorHint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
                 android:id="@+id/button_search"
@@ -46,10 +47,50 @@
 
     </androidx.cardview.widget.CardView>
 
+    <!-- Categories Filter Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="8dp">
+
+        <!-- Categories Filter Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Categories"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Categories RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_categories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:clipToPadding="false"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            tools:listitem="@layout/item_filter_chip" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="8dp"
+            android:background="?attr/colorOutlineVariant" />
+
+    </LinearLayout>
+
+    <!-- Content Area -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Initial State -->
         <LinearLayout
             android:id="@+id/layout_initial"
             android:layout_width="match_parent"
@@ -71,28 +112,31 @@
                 android:text="Search for News"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#212121" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Find the latest news on any topic"
+                android:text="Find news by category or search for specific topics"
                 android:textSize="14sp"
-                android:textColor="#757575"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textAlignment="center" />
 
         </LinearLayout>
 
+        <!-- Search Results -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_search"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="8dp"
+            android:paddingBottom="80dp"
             android:clipToPadding="false"
             android:visibility="gone"
             tools:listitem="@layout/item_news" />
 
+        <!-- Loading -->
         <ProgressBar
             android:id="@+id/progress_bar"
             android:layout_width="wrap_content"
@@ -100,6 +144,7 @@
             android:layout_gravity="center"
             android:visibility="gone" />
 
+        <!-- Empty State -->
         <LinearLayout
             android:id="@+id/layout_empty"
             android:layout_width="match_parent"
@@ -123,7 +168,7 @@
                 android:layout_marginTop="16dp"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#212121"
+                android:textColor="?attr/colorOnSurface"
                 android:text="No Results" />
 
             <TextView
@@ -132,9 +177,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:textSize="14sp"
-                android:textColor="#757575"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textAlignment="center"
-                android:text="Try different keywords" />
+                android:text="Try different keywords or category" />
 
         </LinearLayout>
 
