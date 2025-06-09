@@ -50,7 +50,7 @@ public class DetailActivity extends AppCompatActivity {
 
     // Reading mode components
     private boolean isLoadingFullArticle = false;
-    private String currentMode = "summary"; // "summary" atau "full"
+    private String currentMode = "summary";
 
     // Intent extras constants
     public static final String EXTRA_ARTICLE_TITLE = "extra_article_title";
@@ -70,13 +70,6 @@ public class DetailActivity extends AppCompatActivity {
             binding = ActivityDetailBinding.inflate(getLayoutInflater());
             setContentView(binding.getRoot());
 
-            // Check if binding is successful
-            if (binding == null) {
-                Log.e(TAG, "Failed to inflate layout - binding is null");
-                finish();
-                return;
-            }
-
             // Initialize components
             mainHandler = new Handler(Looper.getMainLooper());
             initializeDatabase();
@@ -90,7 +83,6 @@ public class DetailActivity extends AppCompatActivity {
             Log.d(TAG, "DetailActivity created successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate: " + e.getMessage(), e);
-            Toast.makeText(this, "Error loading article details", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -160,10 +152,7 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void setupUI() {
-        if (article == null || isDestroyed || binding == null) {
-            Log.e(TAG, "Cannot setup UI - missing components");
-            return;
-        }
+        if (article == null || isDestroyed) return;
 
         try {
             // Setup toolbar
@@ -174,15 +163,15 @@ public class DetailActivity extends AppCompatActivity {
             }
 
             // Set title
-            if (article.getTitle() != null && binding.textTitle != null) {
+            if (article.getTitle() != null) {
                 binding.textTitle.setText(article.getTitle());
             }
 
             // Set description
-            if (article.getDescription() != null && !article.getDescription().isEmpty() && binding.textDescription != null) {
+            if (article.getDescription() != null && !article.getDescription().isEmpty()) {
                 binding.textDescription.setText(article.getDescription());
                 binding.textDescription.setVisibility(View.VISIBLE);
-            } else if (binding.textDescription != null) {
+            } else {
                 binding.textDescription.setVisibility(View.GONE);
             }
 
@@ -260,10 +249,7 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void setupWebViewSafely() {
-        if (isDestroyed || binding == null || binding.webView == null) {
-            Log.w(TAG, "Cannot setup WebView - components not available");
-            return;
-        }
+        if (isDestroyed || binding.webView == null) return;
 
         try {
             // Configure WebView settings for summary mode
@@ -278,7 +264,7 @@ public class DetailActivity extends AppCompatActivity {
                 @Override
                 public void onPageStarted(WebView view, String url, Bitmap favicon) {
                     super.onPageStarted(view, url, favicon);
-                    if (!isDestroyed && binding != null && binding.progressBar != null) {
+                    if (!isDestroyed && binding.progressBar != null) {
                         binding.progressBar.setVisibility(View.VISIBLE);
                     }
                 }
@@ -286,7 +272,7 @@ public class DetailActivity extends AppCompatActivity {
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
-                    if (!isDestroyed && binding != null && binding.progressBar != null) {
+                    if (!isDestroyed && binding.progressBar != null) {
                         binding.progressBar.setVisibility(View.GONE);
 
                         if (currentMode.equals("full")) {
@@ -299,7 +285,7 @@ public class DetailActivity extends AppCompatActivity {
                 public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                     super.onReceivedError(view, errorCode, description, failingUrl);
                     Log.e(TAG, "WebView error: " + description);
-                    if (!isDestroyed && binding != null && binding.progressBar != null) {
+                    if (!isDestroyed && binding.progressBar != null) {
                         binding.progressBar.setVisibility(View.GONE);
                     }
                 }
@@ -322,18 +308,13 @@ public class DetailActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             Log.e(TAG, "Error setting up WebView: " + e.getMessage(), e);
-            if (binding != null && binding.progressBar != null) {
+            if (binding.progressBar != null) {
                 binding.progressBar.setVisibility(View.GONE);
             }
         }
     }
 
     private void setupReadingModeToggle() {
-        if (binding == null) {
-            Log.w(TAG, "Cannot setup reading mode toggle - binding is null");
-            return;
-        }
-
         try {
             if (binding.buttonToggleMode != null) {
                 binding.buttonToggleMode.setOnClickListener(v -> toggleReadingMode());
@@ -546,16 +527,9 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void setupButtons() {
-        if (binding == null) {
-            Log.w(TAG, "Cannot setup buttons - binding is null");
-            return;
-        }
-
         try {
             // Setup toolbar navigation
-            if (binding.toolbar != null) {
-                binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
-            }
+            binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
 
             // Share button
             if (binding.fabShare != null) {
@@ -574,15 +548,14 @@ public class DetailActivity extends AppCompatActivity {
 
     // ENHANCED BROWSER OPENING FUNCTIONALITY
     private void openInBrowserSafely() {
-        String url = null; // Deklarasi di luar try-catch
-
+        String url = null;
         try {
             if (article.getUrl() == null || article.getUrl().isEmpty()) {
                 Toast.makeText(this, "No URL available", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            url = article.getUrl(); // Inisialisasi url
+            url = article.getUrl();
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 url = "https://" + url;
             }
@@ -590,30 +563,26 @@ public class DetailActivity extends AppCompatActivity {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            // Cek apakah ada aplikasi yang bisa menangani intent ini
             PackageManager packageManager = getPackageManager();
             List<ResolveInfo> activities = packageManager.queryIntentActivities(
                     browserIntent, PackageManager.MATCH_DEFAULT_ONLY);
 
             if (activities.size() > 0) {
-                // Buat chooser untuk memberikan pilihan aplikasi
                 Intent chooser = Intent.createChooser(browserIntent, "Open with");
                 startActivity(chooser);
                 Log.d(TAG, "Browser intent started successfully");
             } else {
-                // Fallback: coba buka dengan aplikasi browser tertentu
                 tryOpenWithSpecificBrowser(url);
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Error opening browser: " + e.getMessage(), e);
-            // Fallback terakhir - load di WebView internal
+            // Now url is always defined
             loadUrlInInternalWebView(url);
         }
     }
 
     private void tryOpenWithSpecificBrowser(String url) {
-        // Daftar aplikasi browser yang umum
         String[] browserPackages = {
                 "com.android.chrome",           // Chrome
                 "com.android.browser",          // Default Browser
@@ -879,34 +848,22 @@ public class DetailActivity extends AppCompatActivity {
         isDestroyed = true;
 
         try {
-            // Cleanup WebView with null checks
-            if (binding != null && binding.webView != null) {
-                try {
-                    binding.webView.stopLoading();
-                    binding.webView.clearCache(true);
-                    binding.webView.clearHistory();
-                    binding.webView.destroy();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error cleaning up WebView: " + e.getMessage(), e);
-                }
+            // Cleanup WebView
+            if (binding.webView != null) {
+                binding.webView.stopLoading();
+                binding.webView.clearCache(true);
+                binding.webView.clearHistory();
+                binding.webView.destroy();
             }
 
             // Cleanup executor service
             if (executorService != null && !executorService.isShutdown()) {
-                try {
-                    executorService.shutdown();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error shutting down executor: " + e.getMessage(), e);
-                }
+                executorService.shutdown();
             }
 
             // Clear handlers
             if (mainHandler != null) {
-                try {
-                    mainHandler.removeCallbacksAndMessages(null);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error clearing handler: " + e.getMessage(), e);
-                }
+                mainHandler.removeCallbacksAndMessages(null);
             }
 
             // Clear binding
