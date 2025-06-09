@@ -267,7 +267,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
             // Update UI
             if (binding.buttonBookmark != null) {
                 binding.buttonBookmark.setImageResource(
-                        isBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark_border);
+                        isBookmarked ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border);
             }
 
             // Update favorite indicator
