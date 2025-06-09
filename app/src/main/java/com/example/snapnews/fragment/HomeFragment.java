@@ -45,13 +45,17 @@ public class HomeFragment extends Fragment {
     private List<FilterChip> filterChips = new ArrayList<>();
     private NewsApiService newsApiService;
 
-    // PERUBAHAN: Menggunakan NewsDatabaseHelper
+    // Database components
     private ArticleDao articleDao;
-    private NewsDatabaseHelper dbHelper; // GANTI dari NewsDatabase ke NewsDatabaseHelper
+    private NewsDatabaseHelper dbHelper;
 
+    // Threading components
     private ExecutorService executorService;
     private Handler mainHandler;
     private FilterChip currentFilter;
+
+    // Network call management
+    private Call<NewsResponse> currentCall;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -73,10 +77,11 @@ public class HomeFragment extends Fragment {
     private void initializeComponents() {
         newsApiService = RetrofitClient.getNewsApiService();
 
-        // PERUBAHAN: Inisialisasi NewsDatabaseHelper
+        // Initialize NewsDatabaseHelper
         dbHelper = NewsDatabaseHelper.getInstance(requireContext());
         articleDao = new ArticleDao(dbHelper);
 
+        // Initialize threading components
         executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
         Log.d(TAG, "Components initialized with NewsDatabaseHelper");
@@ -144,11 +149,14 @@ public class HomeFragment extends Fragment {
 
         currentFilter = filterChip;
 
+        // Cancel current network call if any
+        cancelCurrentCall();
+
         // Clear existing articles to show change immediately
         articles.clear();
         newsAdapter.notifyDataSetChanged();
 
-        // Force API call for testing
+        // Force API call for new filter
         Log.d(TAG, "FORCING API CALL for filter test");
         loadNewsFromApi();
     }
@@ -169,6 +177,12 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadNewsFromApi() {
+        // Check if fragment is still valid
+        if (!isAdded() || getContext() == null) {
+            Log.w(TAG, "Fragment not attached, skipping API call");
+            return;
+        }
+
         showLoading();
 
         String category = currentFilter.getCategory();
@@ -179,7 +193,10 @@ public class HomeFragment extends Fragment {
         Log.d(TAG, "Category: " + category);
         Log.d(TAG, "Country: " + country);
 
-        Call<NewsResponse> call = newsApiService.getTopHeadlines(
+        // Cancel previous call
+        cancelCurrentCall();
+
+        currentCall = newsApiService.getTopHeadlines(
                 country,
                 category,
                 20,
@@ -187,15 +204,21 @@ public class HomeFragment extends Fragment {
                 ApiKeyManager.getNewsApiKey()
         );
 
-        String url = call.request().url().toString();
+        String url = currentCall.request().url().toString();
         Log.d(TAG, "Full API URL: " + url);
 
-        call.enqueue(new Callback<NewsResponse>() {
+        currentCall.enqueue(new Callback<NewsResponse>() {
             @Override
             public void onResponse(@NonNull Call<NewsResponse> call, @NonNull Response<NewsResponse> response) {
                 Log.d(TAG, "=== API RESPONSE ===");
                 Log.d(TAG, "Response code: " + response.code());
                 Log.d(TAG, "Response successful: " + response.isSuccessful());
+
+                // Check if fragment is still valid
+                if (!isAdded() || getContext() == null) {
+                    Log.w(TAG, "Fragment not attached, ignoring response");
+                    return;
+                }
 
                 hideLoading();
 
@@ -250,61 +273,105 @@ public class HomeFragment extends Fragment {
 
                     handleApiError("Failed to load " + currentFilter.getName() + " news");
                 }
+
+                // Clear current call reference
+                currentCall = null;
             }
 
             @Override
             public void onFailure(@NonNull Call<NewsResponse> call, @NonNull Throwable t) {
                 Log.e(TAG, "=== API CALL FAILED ===", t);
+
+                // Check if fragment is still valid
+                if (!isAdded() || getContext() == null) {
+                    Log.w(TAG, "Fragment not attached, ignoring failure");
+                    return;
+                }
+
                 hideLoading();
                 handleNetworkError();
+
+                // Clear current call reference
+                currentCall = null;
             }
         });
     }
 
+    private void cancelCurrentCall() {
+        if (currentCall != null && !currentCall.isCanceled()) {
+            currentCall.cancel();
+            currentCall = null;
+            Log.d(TAG, "Previous API call canceled");
+        }
+    }
+
     private void loadNewsFromDatabase() {
+        // Check if fragment is still valid and executor is available
+        if (!isAdded() || getContext() == null || executorService == null || executorService.isShutdown()) {
+            Log.w(TAG, "Fragment not ready or executor unavailable, skipping database load");
+            return;
+        }
+
         showLoading();
 
-        // PERUBAHAN: Menggunakan NewsDatabaseHelper
         executorService.execute(() -> {
             Log.d(TAG, "Loading news from NewsDatabaseHelper");
 
             try {
                 List<Article> cachedArticles = articleDao.getAllArticles();
 
-                mainHandler.post(() -> {
-                    hideLoading();
+                // Check if fragment is still valid before updating UI
+                if (isAdded() && getContext() != null && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        // Double check if fragment is still valid
+                        if (!isAdded() || getContext() == null) {
+                            Log.w(TAG, "Fragment not attached, skipping UI update");
+                            return;
+                        }
 
-                    if (cachedArticles != null && !cachedArticles.isEmpty()) {
-                        Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from NewsDatabaseHelper");
-                        articles.clear();
-                        articles.addAll(cachedArticles);
-                        newsAdapter.notifyDataSetChanged();
-                        showContent();
+                        hideLoading();
 
-                        String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
-                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                    } else {
-                        Log.w(TAG, "No cached articles found in NewsDatabaseHelper");
-                        showError("No cached news available", "Connect to internet and pull down to refresh");
-                    }
-                });
+                        if (cachedArticles != null && !cachedArticles.isEmpty()) {
+                            Log.d(TAG, "Loaded " + cachedArticles.size() + " articles from NewsDatabaseHelper");
+                            articles.clear();
+                            articles.addAll(cachedArticles);
+                            newsAdapter.notifyDataSetChanged();
+                            showContent();
+
+                            String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
+                            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                        } else {
+                            Log.w(TAG, "No cached articles found in NewsDatabaseHelper");
+                            showError("No cached news available", "Connect to internet and pull down to refresh");
+                        }
+                    });
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error loading from NewsDatabaseHelper", e);
-                mainHandler.post(() -> {
-                    hideLoading();
-                    showError("Database Error", "Error loading cached news");
-                });
+                if (isAdded() && getContext() != null && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        if (isAdded() && getContext() != null) {
+                            hideLoading();
+                            showError("Database Error", "Error loading cached news");
+                        }
+                    });
+                }
             }
         });
     }
 
     private void saveArticlesToDatabase(List<Article> articles) {
-        // PERUBAHAN: Menggunakan NewsDatabaseHelper
+        // Check if executor is available and fragment is still valid
+        if (executorService == null || executorService.isShutdown() || !isAdded()) {
+            Log.w(TAG, "Executor unavailable or fragment not attached, skipping database save");
+            return;
+        }
+
         executorService.execute(() -> {
             try {
                 Log.d(TAG, "Saving " + articles.size() + " articles to NewsDatabaseHelper");
 
-                // Set timestamp untuk setiap artikel
+                // Set timestamp for each article
                 for (Article article : articles) {
                     if (article.getTimestamp() == 0) {
                         article.setTimestamp(System.currentTimeMillis());
@@ -322,7 +389,7 @@ public class HomeFragment extends Fragment {
 
     private void showLoading() {
         Log.d(TAG, "Showing loading state");
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.progressBar.setVisibility(View.VISIBLE);
             binding.recyclerViewNews.setVisibility(View.GONE);
             binding.layoutError.setVisibility(View.GONE);
@@ -332,7 +399,7 @@ public class HomeFragment extends Fragment {
 
     private void hideLoading() {
         Log.d(TAG, "Hiding loading state");
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.progressBar.setVisibility(View.GONE);
             binding.swipeRefreshLayout.setRefreshing(false);
         }
@@ -340,7 +407,7 @@ public class HomeFragment extends Fragment {
 
     private void showContent() {
         Log.d(TAG, "Showing content - Articles count: " + articles.size());
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.recyclerViewNews.setVisibility(View.VISIBLE);
             binding.layoutError.setVisibility(View.GONE);
         }
@@ -348,7 +415,7 @@ public class HomeFragment extends Fragment {
 
     private void showError(String title, String message) {
         Log.d(TAG, "Showing error: " + title + " - " + message);
-        if (binding != null) {
+        if (binding != null && isAdded()) {
             binding.recyclerViewNews.setVisibility(View.GONE);
             binding.layoutError.setVisibility(View.VISIBLE);
             binding.textErrorTitle.setText(title);
@@ -381,8 +448,12 @@ public class HomeFragment extends Fragment {
 
     private boolean isNetworkAvailable() {
         try {
+            if (getContext() == null) {
+                return false;
+            }
+
             ConnectivityManager connectivityManager =
-                    (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+                    (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
 
             if (connectivityManager == null) {
                 Log.e(TAG, "ConnectivityManager is null");
@@ -402,12 +473,30 @@ public class HomeFragment extends Fragment {
     }
 
     @Override
+    public void onDestroyView() {
+        Log.d(TAG, "onDestroyView called");
+
+        // Cancel any ongoing network calls
+        cancelCurrentCall();
+
+        super.onDestroyView();
+        binding = null;
+    }
+
+    @Override
     public void onDestroy() {
-        super.onDestroy();
+        Log.d(TAG, "onDestroy called");
+
+        // Cancel any ongoing network calls
+        cancelCurrentCall();
+
+        // Shutdown executor service
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+            Log.d(TAG, "ExecutorService shutdown");
         }
-        binding = null;
+
+        super.onDestroy();
         Log.d(TAG, "HomeFragment destroyed - NewsDatabaseHelper connections will be closed automatically");
     }
 }
