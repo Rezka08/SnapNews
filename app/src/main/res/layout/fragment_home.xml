@@ -27,7 +27,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_marginBottom="8dp"
                 android:text="Categories"
-                android:textColor="#212121"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -59,6 +59,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:padding="8dp"
+                android:paddingBottom="80dp"
                 android:clipToPadding="false"
                 tools:listitem="@layout/item_news" />
 
@@ -92,7 +93,7 @@
                     android:layout_marginTop="16dp"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="#212121"
+                    android:textColor="?attr/colorOnSurface"
                     android:text="Something went wrong" />
 
                 <TextView
@@ -101,7 +102,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:textSize="14sp"
-                    android:textColor="#757575"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textAlignment="center"
                     android:text="Please try again" />
 
