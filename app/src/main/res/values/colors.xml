@@ -9,74 +9,95 @@
     <color name="on_primary">#FFFFFF</color>
 
     <!-- Secondary Colors -->
-    <color name="secondary_color">#FF9800</color>
-    <color name="secondary_dark_color">#F57C00</color>
-    <color name="secondary_light_color">#FFE0B2</color>
-    <color name="on_secondary">#000000</color>
+    <color name="secondary_color">#FF6B35</color>
+    <color name="secondary_dark_color">#E55100</color>
+    <color name="secondary_light_color">#FFB74D</color>
+    <color name="on_secondary">#FFFFFF</color>
 
     <!-- Surface & Background (Light) -->
     <color name="surface_color">#FFFFFF</color>
-    <color name="background_color">#FAFAFA</color>
-    <color name="surface_variant_color">#F5F5F5</color>
+    <color name="background_color">#F8F9FA</color>
+    <color name="surface_variant_color">#F3F4F6</color>
 
     <!-- Text Colors (Light) -->
-    <color name="on_surface">#212121</color>
-    <color name="on_background">#212121</color>
-    <color name="on_surface_variant">#757575</color>
+    <color name="on_surface">#1F2937</color>
+    <color name="on_background">#111827</color>
+    <color name="on_surface_variant">#6B7280</color>
 
     <!-- Outline Colors (Light) -->
-    <color name="outline_color">#E0E0E0</color>
-    <color name="outline_variant_color">#F5F5F5</color>
+    <color name="outline_color">#E5E7EB</color>
+    <color name="outline_variant_color">#F3F4F6</color>
 
     <!-- Error Colors -->
-    <color name="error_color">#F44336</color>
+    <color name="error_color">#EF4444</color>
     <color name="on_error">#FFFFFF</color>
 
-    <!-- === DARK THEME COLORS === -->
+    <!-- === ENHANCED DARK THEME COLORS === -->
 
-    <!-- Primary Colors (Dark) -->
-    <color name="primary_color_dark">#64B5F6</color>
-    <color name="primary_variant_dark">#42A5F5</color>
-    <color name="on_primary_dark">#000000</color>
+    <!-- Primary Colors (Dark) - More vibrant -->
+    <color name="primary_color_dark">#3B82F6</color>
+    <color name="primary_variant_dark">#2563EB</color>
+    <color name="on_primary_dark">#FFFFFF</color>
 
-    <!-- Secondary Colors (Dark) -->
-    <color name="secondary_color_dark">#FFB74D</color>
-    <color name="secondary_variant_dark">#FFA726</color>
+    <!-- Secondary Colors (Dark) - Warmer accent -->
+    <color name="secondary_color_dark">#F59E0B</color>
+    <color name="secondary_variant_dark">#D97706</color>
     <color name="on_secondary_dark">#000000</color>
 
-    <!-- Surface & Background (Dark) -->
-    <color name="surface_color_dark">#1E1E1E</color>
-    <color name="background_color_dark">#121212</color>
-    <color name="surface_variant_dark">#2C2C2C</color>
+    <!-- Surface & Background (Dark) - Rich dark colors -->
+    <color name="surface_color_dark">#1F2937</color>
+    <color name="background_color_dark">#111827</color>
+    <color name="surface_variant_dark">#374151</color>
 
-    <!-- Text Colors (Dark) -->
-    <color name="on_surface_dark">#FFFFFF</color>
-    <color name="on_background_dark">#FFFFFF</color>
-    <color name="on_surface_variant_dark">#CCCCCC</color>
+    <!-- Text Colors (Dark) - Better contrast -->
+    <color name="on_surface_dark">#F9FAFB</color>
+    <color name="on_background_dark">#F3F4F6</color>
+    <color name="on_surface_variant_dark">#D1D5DB</color>
 
-    <!-- Outline Colors (Dark) -->
-    <color name="outline_dark">#3C3C3C</color>
-    <color name="outline_variant_dark">#2C2C2C</color>
+    <!-- Outline Colors (Dark) - Subtle borders -->
+    <color name="outline_dark">#4B5563</color>
+    <color name="outline_variant_dark">#374151</color>
 
     <!-- Error Colors (Dark) -->
-    <color name="error_color_dark">#EF5350</color>
+    <color name="error_color_dark">#F87171</color>
     <color name="on_error_dark">#000000</color>
+
+    <!-- === ENHANCED DARK MODE SPECIAL COLORS === -->
+
+    <!-- Card backgrounds with elevation effect -->
+    <color name="card_background_dark">#293548</color>
+    <color name="card_background_elevated_dark">#3C4B66</color>
+
+    <!-- Glassmorphism effects -->
+    <color name="glass_background_dark">#1A2332</color>
+    <color name="glass_border_dark">#4B5866</color>
+
+    <!-- Gradient colors for modern look -->
+    <color name="gradient_start_dark">#1E3A8A</color>
+    <color name="gradient_middle_dark">#3B82F6</color>
+    <color name="gradient_end_dark">#8B5CF6</color>
+
+    <!-- Accent colors for highlights -->
+    <color name="accent_blue_dark">#60A5FA</color>
+    <color name="accent_purple_dark">#A78BFA</color>
+    <color name="accent_green_dark">#34D399</color>
+    <color name="accent_orange_dark">#FBBF24</color>
 
     <!-- === UTILITY COLORS === -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="gray">#9E9E9E</color>
-    <color name="light_gray">#F5F5F5</color>
-    <color name="dark_gray">#424242</color>
+    <color name="gray">#9CA3AF</color>
+    <color name="light_gray">#F3F4F6</color>
+    <color name="dark_gray">#374151</color>
     <color name="transparent">#00000000</color>
 
     <!-- === SEMANTIC COLORS === -->
-    <color name="success_color">#4CAF50</color>
-    <color name="success_color_dark">#66BB6A</color>
-    <color name="warning_color">#FF9800</color>
-    <color name="warning_color_dark">#FFB74D</color>
-    <color name="info_color">#2196F3</color>
-    <color name="info_color_dark">#64B5F6</color>
+    <color name="success_color">#10B981</color>
+    <color name="success_color_dark">#34D399</color>
+    <color name="warning_color">#F59E0B</color>
+    <color name="warning_color_dark">#FBBF24</color>
+    <color name="info_color">#3B82F6</color>
+    <color name="info_color_dark">#60A5FA</color>
 
     <!-- === BRAND COLORS === -->
     <color name="cnn_red">#CC0000</color>
@@ -86,20 +107,41 @@
     <color name="abc_black">#000000</color>
     <color name="nbc_purple">#9356DC</color>
 
-    <!-- === OVERLAY COLORS === -->
-    <color name="overlay_dark">#80000000</color>
+    <!-- === ENHANCED OVERLAY COLORS === -->
+    <color name="overlay_dark">#CC000000</color>
     <color name="overlay_light">#80FFFFFF</color>
-    <color name="card_shadow">#1A000000</color>
+    <color name="overlay_gradient_dark">#E6000000</color>
+    <color name="card_shadow">#33000000</color>
+    <color name="card_shadow_dark">#66000000</color>
 
-    <!-- === BUTTON STATE COLORS === -->
-    <color name="button_pressed">#E3F2FD</color>
-    <color name="button_pressed_dark">#1E3A5F</color>
-    <color name="button_disabled">#BDBDBD</color>
-    <color name="button_disabled_dark">#424242</color>
+    <!-- === ENHANCED BUTTON STATE COLORS === -->
+    <color name="button_pressed">#DBEAFE</color>
+    <color name="button_pressed_dark">#1E3A8A</color>
+    <color name="button_disabled">#D1D5DB</color>
+    <color name="button_disabled_dark">#4B5563</color>
 
-    <!-- === READING MODE COLORS === -->
+    <!-- === ENHANCED READING MODE COLORS === -->
     <color name="reading_bg">#FEFEFE</color>
-    <color name="reading_bg_dark">#1C1C1C</color>
-    <color name="reading_text">#333333</color>
-    <color name="reading_text_dark">#E0E0E0</color>
+    <color name="reading_bg_dark">#1A202C</color>
+    <color name="reading_text">#2D3748</color>
+    <color name="reading_text_dark">#E2E8F0</color>
+
+    <!-- === MODERN DARK MODE SPECIFIC === -->
+
+    <!-- Neon accents for modern feel -->
+    <color name="neon_blue">#00D4FF</color>
+    <color name="neon_purple">#7C3AED</color>
+    <color name="neon_green">#00F5A0</color>
+
+    <!-- Shimmer effect colors -->
+    <color name="shimmer_base_dark">#2D3748</color>
+    <color name="shimmer_highlight_dark">#4A5568</color>
+
+    <!-- News category specific colors -->
+    <color name="category_tech_dark">#3B82F6</color>
+    <color name="category_business_dark">#10B981</color>
+    <color name="category_sports_dark">#F59E0B</color>
+    <color name="category_entertainment_dark">#EC4899</color>
+    <color name="category_health_dark">#EF4444</color>
+    <color name="category_science_dark">#8B5CF6</color>
 </resources>

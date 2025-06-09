@@ -2,6 +2,7 @@
 <resources>
     <!-- App Info -->
     <string name="app_name">SnapNews</string>
+    <string name="app_description">Stay informed with the latest news</string>
 
     <!-- Navigation -->
     <string name="home">Home</string>
@@ -18,6 +19,18 @@
     <string name="sports">Sports</string>
     <string name="health">Health</string>
     <string name="science">Science</string>
+    <string name="politics">Politics</string>
+    <string name="world">World</string>
+    <string name="general">General</string>
+
+    <!-- Enhanced Category Descriptions -->
+    <string name="category_latest_desc">Breaking news and latest updates</string>
+    <string name="category_business_desc">Business, finance, and economy</string>
+    <string name="category_technology_desc">Tech news, gadgets, and innovation</string>
+    <string name="category_entertainment_desc">Movies, music, and celebrity news</string>
+    <string name="category_sports_desc">Sports news and live scores</string>
+    <string name="category_health_desc">Health, medical, and wellness news</string>
+    <string name="category_science_desc">Scientific discoveries and research</string>
 
     <!-- Search -->
     <string name="search_news">Search news...</string>
@@ -27,6 +40,8 @@
     <string name="no_results">No Results Found</string>
     <string name="try_different_keywords">Try different keywords or category</string>
     <string name="no_results_icon">No results icon</string>
+    <string name="clear_search">Clear search</string>
+    <string name="search_hint">What are you looking for?</string>
 
     <!-- Favorites -->
     <string name="no_favorites">No Favorites Yet</string>
@@ -34,6 +49,8 @@
     <string name="no_favorites_icon">No favorites icon</string>
     <string name="added_to_favorites">Added to favorites</string>
     <string name="removed_from_favorites">Removed from favorites</string>
+    <string name="favorites_empty_title">Your Reading List is Empty</string>
+    <string name="favorites_empty_subtitle">Bookmark articles you want to read later</string>
 
     <!-- Detail Activity -->
     <string name="article_image">Article image</string>
@@ -44,9 +61,13 @@
     <string name="reading_mode">Reading Mode</string>
     <string name="full_article">Full Article</string>
     <string name="summary">Summary</string>
+    <string name="summary_view">Summary View</string>
     <string name="tap_to_read_full">Tap to read full article</string>
-    <string name="showing_full_article">Showing full article</string>
+    <string name="showing_full_article">Reading full article from web</string>
+    <string name="showing_summary">Currently showing article summary</string>
     <string name="read_full_article">Read full article →</string>
+    <string name="article_summary_note">📄 Article Summary</string>
+    <string name="full_article_tip">💡 Tap \'Full Article\' to read the complete story</string>
 
     <!-- Time and Reading -->
     <string name="min_read">%d min read</string>
@@ -57,10 +78,22 @@
     <string name="time_ago_hours">%d hours ago</string>
     <string name="time_ago_day">1 day ago</string>
     <string name="time_ago_days">%d days ago</string>
+    <string name="time_ago_week">1 week ago</string>
+    <string name="time_ago_weeks">%d weeks ago</string>
+    <string name="published_by">By %s</string>
+    <string name="published_at">Published %s</string>
 
-    <!-- Loading and Status -->
-    <string name="loading_news">Loading news...</string>
-    <string name="refreshing">Refreshing...</string>
+    <!-- Enhanced Loading and Status Messages -->
+    <string name="loading_news">Loading latest news…</string>
+    <string name="loading_description">Getting the latest stories for you</string>
+    <string name="refreshing">Refreshing…</string>
+    <string name="updating_news">Updating news…</string>
+    <string name="syncing_data">Syncing data…</string>
+    <string name="loading_category">Loading %s news…</string>
+    <string name="loading_search">Searching articles…</string>
+    <string name="processing_request">Processing your request…</string>
+
+    <!-- Success Messages -->
     <string name="showing_news">Showing %s news</string>
     <string name="articles_loaded">✅ %1$s: %2$d articles loaded</string>
     <string name="offline_cached">📱 Offline: showing cached %s news</string>
@@ -68,15 +101,20 @@
     <string name="search_results_found">🔍 Found %d results for \'%s\'</string>
     <string name="category_changed">Category changed to %s</string>
     <string name="loading_popular_news">Loading popular news</string>
+    <string name="news_updated">News updated successfully</string>
+    <string name="data_refreshed">Data refreshed</string>
 
-    <!-- Error messages -->
+    <!-- Enhanced Error Messages -->
     <string name="error_title">Something went wrong</string>
     <string name="error_message">Please try again</string>
     <string name="error_icon">Error icon</string>
-    <string name="retry">Retry</string>
+    <string name="retry">Try Again</string>
+    <string name="refresh">Refresh</string>
     <string name="network_error">Network Error</string>
+    <string name="network_error_title">Connection Problem</string>
     <string name="check_internet">Please check your internet connection</string>
     <string name="server_error">Server Error</string>
+    <string name="server_error_desc">Our servers are having issues. Please try again later.</string>
     <string name="api_key_error">API Key Error</string>
     <string name="check_api_key">Please check your API key configuration</string>
     <string name="no_cached_news">No cached news available</string>
@@ -84,6 +122,18 @@
     <string name="no_cached_articles">No cached articles</string>
     <string name="connect_for_latest">Connect to internet for latest news</string>
     <string name="try_different_category">Try different category or check back later</string>
+    <string name="loading_failed">Failed to load content</string>
+    <string name="timeout_error">Request timed out</string>
+    <string name="unknown_error">An unexpected error occurred</string>
+
+    <!-- Empty States -->
+    <string name="no_news_available">No News Available</string>
+    <string name="empty_news_description">Pull down to refresh or check your connection</string>
+    <string name="empty_news_icon">Empty news</string>
+    <string name="no_search_results">No articles found</string>
+    <string name="search_empty_desc">Try different keywords or browse categories</string>
+    <string name="category_empty">No articles in this category</string>
+    <string name="category_empty_desc">Check back later for new articles</string>
 
     <!-- Settings -->
     <string name="appearance">Appearance</string>
@@ -92,31 +142,161 @@
     <string name="light_theme">Light</string>
     <string name="dark_theme">Dark</string>
     <string name="system_theme">Match System</string>
+    <string name="auto_theme">Auto</string>
     <string name="theme_light_desc">Always use light theme</string>
     <string name="theme_dark_desc">Always use dark theme</string>
     <string name="theme_system_desc">Follow system setting</string>
+    <string name="theme_auto_desc">Automatically switch based on time</string>
     <string name="about">About</string>
     <string name="version">Version</string>
-    <string name="developed_with_love">Developed by Rezka Wildan️</string>
+    <string name="app_version">1.0.0</string>
+    <string name="developed_with_love">Developed by Rezka Wildan</string>
     <string name="powered_by_newsapi">Powered by NewsAPI.org</string>
     <string name="cancel">Cancel</string>
+    <string name="apply">Apply</string>
+    <string name="save">Save</string>
+    <string name="theme_changed">Theme changed to %s</string>
 
-    <!-- Content Descriptions -->
+    <!-- Content Descriptions for Accessibility -->
     <string name="time_icon">Time icon</string>
     <string name="author_icon">Author icon</string>
     <string name="article_icon">Article icon</string>
+    <string name="source_icon">Source icon</string>
     <string name="chevron_right">Chevron right</string>
     <string name="info_icon">Info icon</string>
     <string name="theme_icon">Theme icon</string>
     <string name="settings_icon">Settings icon</string>
+    <string name="categories_icon">Categories icon</string>
+    <string name="filter_icon">Filter icon</string>
+    <string name="trending_icon">Trending icon</string>
+    <string name="popular_icon">Popular icon</string>
+    <string name="live_icon">Live icon</string>
+    <string name="update_available_icon">Update available</string>
+    <string name="refresh_icon">Refresh icon</string>
 
-    <!-- Share -->
+    <!-- Share and Actions -->
     <string name="share">Share</string>
     <string name="share_via">Share via</string>
+    <string name="share_article_text">Check out this article: %1$s\n\n%2$s\n\nRead more: %3$s\n\nShared via SnapNews</string>
     <string name="bookmark">Bookmark</string>
     <string name="bookmarked">Bookmarked</string>
+    <string name="unbookmark">Remove bookmark</string>
+    <string name="copy_link">Copy link</string>
+    <string name="link_copied">Link copied to clipboard</string>
+    <string name="open_external">Open in browser</string>
+    <string name="save_article">Save article</string>
+    <string name="article_saved">Article saved</string>
 
-    <!-- Notifications (if needed later) -->
+    <!-- Modern UI Elements -->
+    <string name="live_indicator">• LIVE</string>
+    <string name="trending_badge">TRENDING</string>
+    <string name="popular_badge">POPULAR</string>
+    <string name="breaking_badge">BREAKING</string>
+    <string name="featured_badge">FEATURED</string>
+    <string name="new_badge">NEW</string>
+    <string name="updated_badge">UPDATED</string>
+
+    <!-- Real-time Updates -->
+    <string name="new_articles_available">New articles available</string>
+    <string name="tap_to_update">Tap to update</string>
+    <string name="articles_updated">%d new articles</string>
+    <string name="auto_refresh">Auto refresh</string>
+    <string name="manual_refresh">Pull to refresh</string>
+    <string name="last_updated">Last updated: %s</string>
+    <string name="updating_in_background">Updating…</string>
+
+    <!-- Enhanced Filter and Sort -->
+    <string name="filter_by_category">Filter by category</string>
+    <string name="sort_by">Sort by</string>
+    <string name="sort_newest">Newest first</string>
+    <string name="sort_oldest">Oldest first</string>
+    <string name="sort_popular">Most popular</string>
+    <string name="sort_relevant">Most relevant</string>
+    <string name="clear_filters">Clear filters</string>
+    <string name="apply_filters">Apply filters</string>
+    <string name="filters_applied">Filters applied</string>
+
+    <!-- News Article Details -->
+    <string name="full_article_url">Article URL not available</string>
+    <string name="article_content_unavailable">Article content not available</string>
+    <string name="read_original">Read original article</string>
+    <string name="article_loading">Loading article…</string>
+    <string name="article_loaded">Article loaded</string>
+    <string name="unable_to_share">Unable to share article</string>
+    <string name="unable_to_open">Unable to open link</string>
+
+    <!-- Accessibility Improvements -->
+    <string name="news_card">News article card</string>
+    <string name="filter_chip">Category filter</string>
+    <string name="selected_filter">Selected category: %s</string>
+    <string name="navigation_drawer">Navigation drawer</string>
+    <string name="close_navigation">Close navigation</string>
+    <string name="scroll_to_top">Scroll to top</string>
+    <string name="article_options">Article options</string>
+
+    <!-- Connection Status -->
+    <string name="connected">Connected</string>
+    <string name="disconnected">No internet connection</string>
+    <string name="connection_restored">Connection restored</string>
+    <string name="offline_mode">Offline mode</string>
+    <string name="online_mode">Online mode</string>
+    <string name="sync_when_connected">Will sync when connected</string>
+
+    <!-- Performance Messages -->
+    <string name="optimizing_experience">Optimizing your experience…</string>
+    <string name="loading_images">Loading images…</string>
+    <string name="caching_articles">Caching articles for offline reading</string>
+    <string name="clearing_cache">Clearing cache…</string>
+    <string name="cache_cleared">Cache cleared</string>
+
+    <!-- Beta Features (for future use) -->
+    <string name="beta_feature">Beta feature</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="under_development">Under development</string>
+    <string name="feedback_appreciated">Your feedback is appreciated</string>
+
+    <!-- Notifications (if implemented later) -->
     <string name="notification_title">SnapNews</string>
     <string name="notification_text">Check out the latest news</string>
+    <string name="breaking_news_notification">Breaking news update</string>
+    <string name="daily_digest">Daily news digest</string>
+    <string name="notification_settings">Notification settings</string>
+
+    <!-- Onboarding (if needed) -->
+    <string name="welcome_to_snapnews">Welcome to SnapNews</string>
+    <string name="onboarding_subtitle">Your personal news companion</string>
+    <string name="get_started">Get Started</string>
+    <string name="skip">Skip</string>
+    <string name="next">Next</string>
+    <string name="finish">Finish</string>
+
+    <!-- Plurals for better localization -->
+    <plurals name="articles_count">
+        <item quantity="zero">No articles</item>
+        <item quantity="one">1 article</item>
+        <item quantity="other">%d articles</item>
+    </plurals>
+
+    <plurals name="minutes_ago">
+        <item quantity="one">1 minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+
+    <plurals name="hours_ago">
+        <item quantity="one">1 hour ago</item>
+        <item quantity="other">%d hours ago</item>
+    </plurals>
+
+    <plurals name="days_ago">
+        <item quantity="one">1 day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+
+    <!-- Format Strings -->
+    <string name="author_and_date">By %1$s • %2$s</string>
+    <string name="source_and_time">%1$s • %2$s</string>
+    <string name="reading_time_format">%d min read</string>
+    <string name="articles_found_format">%1$d articles found for \"%2$s\"</string>
+    <string name="category_articles_format">%1$d %2$s articles</string>
+
 </resources>

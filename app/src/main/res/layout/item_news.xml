@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- layout/item_news.xml - Compatible version with Material Components -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/card_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_margin="12dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="8dp"
-    app:strokeColor="@color/light_gray"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="12dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:strokeColor="?attr/colorOutline"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -20,132 +20,206 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header dengan gambar -->
+        <!-- Enhanced Header dengan gambar -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp">
+            android:layout_height="220dp">
 
+            <!-- Background Image -->
             <ImageView
                 android:id="@+id/image_news"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@color/light_gray"
-                android:contentDescription="News image"
+                android:background="?attr/colorSurfaceVariant"
+                android:contentDescription="@string/news_image"
                 android:scaleType="centerCrop"
                 tools:src="@drawable/placeholder_image" />
 
-            <!-- Gradient overlay -->
+            <!-- Enhanced gradient overlay -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="80dp"
-                android:layout_gravity="bottom"
+                android:layout_height="match_parent"
                 android:background="@drawable/gradient_overlay" />
 
-            <!-- Favorite icon -->
-            <ImageView
-                android:id="@+id/image_favorite"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+            <!-- Floating favorite icon -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/favorite_container"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:layout_gravity="top|end"
-                android:layout_margin="12dp"
-                android:background="@drawable/circular_background_white"
-                android:contentDescription="Favorite icon"
-                android:padding="6dp"
-                android:src="@drawable/ic_favorite_filled"
-                android:visibility="gone" />
+                android:layout_margin="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="22dp"
+                app:cardElevation="6dp"
+                app:cardBackgroundColor="?attr/colorSurface"
+                tools:visibility="visible">
 
-            <!-- Category badge -->
-            <TextView
-                android:id="@+id/text_category"
+                <ImageView
+                    android:id="@+id/image_favorite"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/favorite_icon"
+                    android:src="@drawable/ic_favorite_filled"
+                    app:tint="?attr/colorError" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Enhanced category badge -->
+            <LinearLayout
+                android:id="@+id/category_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|start"
-                android:layout_margin="12dp"
+                android:layout_margin="16dp"
                 android:background="@drawable/category_badge_bg"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="4dp"
-                android:text="Technology"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:visibility="gone"
-                tools:visibility="visible" />
-
-            <!-- Reading time -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="12dp"
-                android:background="@drawable/reading_time_bg"
                 android:gravity="center"
                 android:orientation="horizontal"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp">
-
-                <ImageView
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Time icon"
-                    android:src="@drawable/ic_access_time" />
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:visibility="gone"
+                tools:visibility="visible">
 
                 <TextView
-                    android:id="@+id/text_reading_time"
+                    android:id="@+id/text_category"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="3 min read"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Technology"
                     android:textColor="@color/white"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
 
+            <!-- Enhanced reading time -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="#CC000000">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginEnd="4dp"
+                        android:contentDescription="@string/time_icon"
+                        android:src="@drawable/ic_access_time"
+                        app:tint="?attr/colorSecondary" />
+
+                    <TextView
+                        android:id="@+id/text_reading_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="3 min read"
+                        android:textColor="@color/white"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Trending indicator -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/trending_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="?attr/colorSecondary">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:layout_marginEnd="4dp"
+                        android:contentDescription="Trending"
+                        android:src="@drawable/ic_trending_up"
+                        app:tint="@color/white" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="TRENDING"
+                        android:textColor="@color/white"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
         </FrameLayout>
 
-        <!-- Content area -->
+        <!-- Enhanced Content area -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
-            <!-- Title -->
+            <!-- Enhanced Title -->
             <TextView
                 android:id="@+id/text_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:lineSpacingExtra="2dp"
+                android:lineSpacingExtra="4dp"
                 android:maxLines="2"
                 android:textColor="?attr/colorOnSurface"
-                android:textSize="18sp"
+                android:textSize="19sp"
                 android:textStyle="bold"
-                tools:text="Breaking News: Revolutionary Technology Announced Today" />
+                android:fontFamily="sans-serif-medium"
+                tools:text="Breaking News: Revolutionary Technology Announced Today That Will Change Everything" />
 
-            <!-- Description -->
+            <!-- Enhanced Description -->
             <TextView
                 android:id="@+id/text_description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:alpha="0.8"
+                android:layout_marginTop="12dp"
+                android:alpha="0.9"
                 android:ellipsize="end"
-                android:lineSpacingExtra="2dp"
+                android:lineSpacingExtra="3dp"
                 android:maxLines="3"
-                android:textColor="@color/gray"
-                android:textSize="14sp"
-                tools:text="This is a detailed description of the news article that provides context and important information..." />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                tools:text="This is a detailed description of the news article that provides context and important information for readers to understand the story better..." />
 
-            <!-- Bottom info -->
+            <!-- Enhanced Bottom section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <!-- Source info -->
+                <!-- Enhanced Source info -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -153,47 +227,91 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
+                    <!-- Accent line -->
+                    <View
+                        android:layout_width="3dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="?attr/colorPrimary" />
+
                     <ImageView
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginEnd="6dp"
-                        android:alpha="0.6"
-                        android:contentDescription="Source icon"
-                        android:src="@drawable/ic_article" />
+                        android:alpha="0.8"
+                        android:contentDescription="@string/article_icon"
+                        android:src="@drawable/ic_article"
+                        app:tint="?attr/colorPrimary" />
 
                     <TextView
                         android:id="@+id/text_source_date"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:alpha="0.7"
+                        android:alpha="0.8"
                         android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
                         android:singleLine="true"
-                        android:textColor="@color/gray"
-                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
                         tools:text="CNN • 2 hours ago" />
 
                 </LinearLayout>
 
-                <!-- Share button -->
-                <ImageButton
-                    android:id="@+id/button_share"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:alpha="0.6"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Share article"
-                    android:src="@drawable/ic_share" />
+                <!-- Enhanced Action buttons -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <!-- Bookmark button -->
-                <ImageButton
-                    android:id="@+id/button_bookmark"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginStart="8dp"
-                    android:alpha="0.6"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Bookmark article"
-                    android:src="@drawable/ic_favorite_border" />
+                    <!-- Share button -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                        app:cardCornerRadius="18dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                        <ImageButton
+                            android:id="@+id/button_share"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center"
+                            android:background="@color/transparent"
+                            android:contentDescription="@string/share_article"
+                            android:src="@drawable/ic_share"
+                            app:tint="?attr/colorPrimary" />
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Bookmark button -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                        app:cardCornerRadius="18dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                        <ImageButton
+                            android:id="@+id/button_bookmark"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center"
+                            android:background="@color/transparent"
+                            android:contentDescription="@string/bookmark"
+                            android:src="@drawable/ic_favorite_border"
+                            app:tint="?attr/colorPrimary" />
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
 
             </LinearLayout>
 

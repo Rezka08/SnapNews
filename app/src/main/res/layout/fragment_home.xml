@@ -1,50 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Enhanced fragment_home.xml - Dengan progress bar yang proper -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="?android:colorBackground"
     tools:context=".fragment.HomeFragment">
 
-    <!-- Filter Chips Section -->
-    <androidx.cardview.widget.CardView
+    <!-- Enhanced Filter Chips Section dengan Material Card -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        app:cardCornerRadius="0dp"
-        app:cardElevation="0dp">
+        android:layout_margin="12dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:strokeColor="?attr/colorOutline"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="8dp">
+            android:padding="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- Enhanced Categories Header -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginBottom="8dp"
-                android:text="Categories"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
 
+                <!-- Accent line -->
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="?attr/colorPrimary" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_apps"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@string/categories_icon" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/categories"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+                <!-- Live indicator -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/live_indicator"
+                    android:textColor="?attr/colorSecondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+            </LinearLayout>
+
+            <!-- Filter Chips RecyclerView -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_view_filter_chips"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="4dp"
                 tools:listitem="@layout/item_filter_chip" />
 
         </LinearLayout>
 
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.card.MaterialCardView>
 
-    <!-- News Content Section -->
+    <!-- Enhanced News Content Section -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
@@ -54,22 +96,85 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+            <!-- News RecyclerView -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_view_news"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:padding="8dp"
-                android:paddingBottom="80dp"
+                android:paddingBottom="100dp"
                 android:clipToPadding="false"
+                android:scrollbars="none"
+                android:fadeScrollbars="true"
+                android:overScrollMode="never"
                 tools:listitem="@layout/item_news" />
 
+            <!-- FIXED: Standalone Progress Bar (selalu visible saat loading) -->
             <ProgressBar
                 android:id="@+id/progress_bar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
-                android:visibility="gone" />
+                android:indeterminateTint="?attr/colorPrimary"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
+            <!-- Enhanced Loading State Container (dengan teks) -->
+            <LinearLayout
+                android:id="@+id/loading_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <!-- Loading Animation Container -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    app:cardCornerRadius="40dp"
+                    app:cardElevation="6dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <ProgressBar
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="?attr/colorPrimary" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/loading_news"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/loading_description"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp"
+                    android:textAlignment="center" />
+
+                <!-- Loading shimmer effect -->
+                <View
+                    android:layout_width="120dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="16dp"
+                    android:background="?attr/colorPrimary"
+                    android:alpha="0.3" />
+
+            </LinearLayout>
+
+            <!-- Enhanced Error State -->
             <LinearLayout
                 android:id="@+id/layout_error"
                 android:layout_width="match_parent"
@@ -79,22 +184,34 @@
                 android:padding="32dp"
                 android:visibility="gone">
 
-                <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:src="@drawable/ic_error"
-                    android:alpha="0.5"
-                    android:contentDescription="Error icon" />
+                <!-- Error icon container -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    app:cardCornerRadius="40dp"
+                    app:cardElevation="4dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_error"
+                        app:tint="?attr/colorError"
+                        android:contentDescription="@string/error_icon" />
+
+                </com.google.android.material.card.MaterialCardView>
 
                 <TextView
                     android:id="@+id/text_error_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textSize="18sp"
+                    android:layout_marginTop="20dp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
-                    android:text="Something went wrong" />
+                    android:fontFamily="sans-serif-medium"
+                    android:text="@string/error_title" />
 
                 <TextView
                     android:id="@+id/text_error_message"
@@ -104,19 +221,128 @@
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textAlignment="center"
-                    android:text="Please try again" />
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/error_message" />
 
-                <Button
+                <!-- Enhanced retry button -->
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_retry"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="Retry" />
+                    android:layout_marginTop="20dp"
+                    android:text="@string/retry"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="12dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:cornerRadius="12dp"
+                    app:rippleColor="?attr/colorOnPrimary"
+                    app:icon="@drawable/ic_refresh"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp" />
+
+            </LinearLayout>
+
+            <!-- Enhanced Empty State -->
+            <LinearLayout
+                android:id="@+id/layout_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    app:cardCornerRadius="50dp"
+                    app:cardElevation="4dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <ImageView
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_article"
+                        app:tint="?attr/colorOnSurfaceVariant"
+                        android:alpha="0.6"
+                        android:contentDescription="@string/empty_news_icon" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/no_news_available"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/empty_news_description"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textAlignment="center" />
 
             </LinearLayout>
 
         </FrameLayout>
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Update Indicator untuk real-time updates -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/update_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="?attr/colorPrimary">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/ic_circle"
+                android:backgroundTint="?attr/colorSecondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/new_articles_available"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_arrow_upward"
+                app:tint="?attr/colorOnPrimary"
+                android:contentDescription="@string/update_available_icon" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>
