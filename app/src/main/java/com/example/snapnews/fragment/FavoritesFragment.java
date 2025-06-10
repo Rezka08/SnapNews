@@ -63,10 +63,90 @@ public class FavoritesFragment extends Fragment {
             }
         });
 
+        newsAdapter.initializeDatabase(dbHelper);
+
+        newsAdapter.setOnItemActionListener(new NewsAdapter.OnItemActionListener() {
+            @Override
+            public void onShareClick(Article article) {
+                shareArticle(article);
+            }
+
+            @Override
+            public void onBookmarkClick(Article article) {
+                // Handle remove from favorites
+                handleFavoriteRemove(article);
+            }
+
+            @Override
+            public void onFavoriteClick(Article article) {
+                // Handle remove from favorites
+                handleFavoriteRemove(article);
+            }
+
+            @Override
+            public void onFavoriteChanged(Article article) {
+                // ADDED: Handle favorite change dalam favorites fragment
+                handleFavoriteRemove(article);
+            }
+        });
+
         binding.recyclerViewFavorites.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerViewFavorites.setAdapter(newsAdapter);
 
-        Log.d(TAG, "RecyclerView setup completed");
+        Log.d(TAG, "RecyclerView setup completed with database sync");
+    }
+
+    private void handleFavoriteRemove(Article article) {
+        if (!article.isFavorite()) {
+            // Article was unfavorited, remove from list
+            favoriteArticles.remove(article);
+            newsAdapter.notifyDataSetChanged();
+
+            // Check if list is now empty
+            if (favoriteArticles.isEmpty()) {
+                showEmptyState();
+            }
+
+            Log.d(TAG, "Article removed from favorites: " + article.getTitle());
+        }
+    }
+
+    private void shareArticle(Article article) {
+        try {
+            android.content.Intent shareIntent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+
+            String shareText = "";
+            if (article.getTitle() != null) {
+                shareText += article.getTitle() + "\n\n";
+            }
+            if (article.getDescription() != null) {
+                shareText += article.getDescription() + "\n\n";
+            }
+            if (article.getUrl() != null) {
+                shareText += "Read more: " + article.getUrl() + "\n\n";
+            }
+            shareText += "Shared via SnapNews";
+
+            shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, shareText);
+            shareIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            startActivity(android.content.Intent.createChooser(shareIntent, "Share article"));
+            Log.d(TAG, "Share intent started successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sharing article: " + e.getMessage(), e);
+            if (getContext() != null) {
+                android.widget.Toast.makeText(getContext(), "Unable to share article",
+                        android.widget.Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    public void refreshFavorites() {
+        Log.d(TAG, "Refresh favorites called from MainActivity");
+        if (isAdded() && getContext() != null) {
+            loadFavorites();
+        }
     }
 
     private void loadFavorites() {
@@ -193,13 +273,17 @@ public class FavoritesFragment extends Fragment {
     public void onResume() {
         super.onResume();
         Log.d(TAG, "Fragment resumed - refreshing favorites from SQLite");
-        // Refresh favorites when fragment becomes visible
         loadFavorites();
     }
 
     @Override
     public void onDestroyView() {
         Log.d(TAG, "onDestroyView called");
+
+        if (newsAdapter != null) {
+            newsAdapter.cleanup();
+        }
+
         super.onDestroyView();
         binding = null;
     }
@@ -208,7 +292,10 @@ public class FavoritesFragment extends Fragment {
     public void onDestroy() {
         Log.d(TAG, "onDestroy called");
 
-        // Shutdown executor service
+        if (newsAdapter != null) {
+            newsAdapter.cleanup();
+        }
+
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
             Log.d(TAG, "ExecutorService shutdown");

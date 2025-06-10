@@ -1,24 +1,37 @@
 package com.example.snapnews.adapter;
 
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.example.snapnews.R;
+import com.example.snapnews.database.ArticleDao;
+import com.example.snapnews.database.NewsDatabaseHelper;
 import com.example.snapnews.databinding.ItemNewsBinding;
 import com.example.snapnews.models.Article;
 import com.example.snapnews.utils.DateUtils;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder> {
     private List<Article> articles;
     private OnItemClickListener onItemClickListener;
     private OnItemActionListener onItemActionListener;
+
+    private ArticleDao articleDao;
+    private NewsDatabaseHelper dbHelper;
+    private ExecutorService executorService;
+    private Handler mainHandler;
 
     public interface OnItemClickListener {
         void onItemClick(Article article);
@@ -28,11 +41,20 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         void onShareClick(Article article);
         void onBookmarkClick(Article article);
         void onFavoriteClick(Article article);
+        void onFavoriteChanged(Article article);
     }
 
     public NewsAdapter(List<Article> articles, OnItemClickListener listener) {
         this.articles = articles;
         this.onItemClickListener = listener;
+
+        this.executorService = Executors.newSingleThreadExecutor();
+        this.mainHandler = new Handler(Looper.getMainLooper());
+    }
+
+    public void initializeDatabase(NewsDatabaseHelper dbHelper) {
+        this.dbHelper = dbHelper;
+        this.articleDao = new ArticleDao(dbHelper);
     }
 
     public void setOnItemActionListener(OnItemActionListener listener) {
@@ -64,6 +86,17 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         notifyDataSetChanged();
     }
 
+    public void updateArticleFavoriteStatus(String articleUrl, boolean isFavorite) {
+        for (int i = 0; i < articles.size(); i++) {
+            Article article = articles.get(i);
+            if (article.getUrl() != null && article.getUrl().equals(articleUrl)) {
+                article.setFavorite(isFavorite);
+                notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
     class NewsViewHolder extends RecyclerView.ViewHolder {
         private ItemNewsBinding binding;
 
@@ -75,7 +108,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         public void bind(Article article) {
             // Set title dengan animasi
             binding.textTitle.setText(article.getTitle());
-            binding.textTitle.setSelected(true); // Enable marquee if needed
+            binding.textTitle.setSelected(true);
 
             // Set description
             if (article.getDescription() != null && !article.getDescription().isEmpty()) {
@@ -107,53 +140,191 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                 binding.textReadingTime.setText(readingTime);
             }
 
-            // Load image dengan Glide dan rounded corners
             loadArticleImage(article);
 
-            // Set favorite indicator
-            if (article.isFavorite()) {
-                binding.imageFavorite.setVisibility(View.VISIBLE);
-                binding.imageFavorite.setImageResource(R.drawable.ic_favorite_filled);
-            } else {
-                binding.imageFavorite.setVisibility(View.GONE);
-            }
+            updateFavoriteIcon(article);
 
-            // Set category badge (jika ada)
             setCategoryBadge(article);
 
-            // Setup click listeners
             setupClickListeners(article);
 
-            // Add subtle animation
             animateItemEntry();
         }
 
+        private void updateFavoriteIcon(Article article) {
+            if (binding.favoriteContainer != null && binding.imageFavorite != null) {
+                if (article.isFavorite()) {
+                    // Artikel sudah di-favorite
+                    binding.favoriteContainer.setVisibility(View.VISIBLE);
+                    binding.imageFavorite.setImageResource(R.drawable.ic_favorite_filled);
+                    binding.imageFavorite.setColorFilter(
+                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.error_color));
+
+                    // Add subtle animation for favorite
+                    binding.favoriteContainer.setScaleX(1.1f);
+                    binding.favoriteContainer.setScaleY(1.1f);
+                    binding.favoriteContainer.animate()
+                            .scaleX(1.0f)
+                            .scaleY(1.0f)
+                            .setDuration(200)
+                            .start();
+                } else {
+                    // Artikel belum di-favorite - hide icon
+                    binding.favoriteContainer.setVisibility(View.GONE);
+                }
+            }
+        }
+
+        private void setupClickListeners(Article article) {
+            binding.cardView.setOnClickListener(v -> {
+                if (onItemClickListener != null) {
+                    onItemClickListener.onItemClick(article);
+                }
+            });
+
+            if (binding.favoriteContainer != null) {
+                binding.favoriteContainer.setOnClickListener(v -> {
+                    // Toggle favorite status
+                    boolean newFavoriteStatus = !article.isFavorite();
+                    article.setFavorite(newFavoriteStatus);
+
+                    // Update UI immediately for responsive feel
+                    updateFavoriteIcon(article);
+
+                    // FIXED: Save to database asynchronously
+                    saveFavoriteToDatabase(article, newFavoriteStatus);
+
+                    // Show feedback
+                    String message = newFavoriteStatus ?
+                            "Added to favorites" : "Removed from favorites";
+                    Toast.makeText(binding.getRoot().getContext(), message, Toast.LENGTH_SHORT).show();
+
+                    // Notify listener for any additional handling
+                    if (onItemActionListener != null) {
+                        onItemActionListener.onFavoriteChanged(article);
+                    }
+                });
+            }
+
+            // Share button
+            if (binding.buttonShare != null) {
+                binding.buttonShare.setOnClickListener(v -> {
+                    if (onItemActionListener != null) {
+                        onItemActionListener.onShareClick(article);
+                    } else {
+                        shareArticle(article);
+                    }
+                });
+            }
+
+            // Bookmark button (same as favorite for consistency)
+            if (binding.buttonBookmark != null) {
+                binding.buttonBookmark.setOnClickListener(v -> {
+                    // Same logic as favorite icon
+                    boolean newFavoriteStatus = !article.isFavorite();
+                    article.setFavorite(newFavoriteStatus);
+                    updateFavoriteIcon(article);
+                    updateBookmarkButton(article);
+                    saveFavoriteToDatabase(article, newFavoriteStatus);
+
+                    String message = newFavoriteStatus ?
+                            "Added to favorites" : "Removed from favorites";
+                    Toast.makeText(binding.getRoot().getContext(), message, Toast.LENGTH_SHORT).show();
+
+                    if (onItemActionListener != null) {
+                        onItemActionListener.onFavoriteChanged(article);
+                    }
+                });
+            }
+        }
+
+        private void saveFavoriteToDatabase(Article article, boolean isFavorite) {
+            if (articleDao == null || executorService == null) {
+                return; // Database not initialized
+            }
+
+            executorService.execute(() -> {
+                try {
+                    // Set timestamp if not set
+                    if (article.getTimestamp() == 0) {
+                        article.setTimestamp(System.currentTimeMillis());
+                    }
+
+                    // Check if article exists in database
+                    Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+
+                    if (existingArticle != null) {
+                        // Update existing article
+                        existingArticle.setFavorite(isFavorite);
+                        articleDao.updateArticle(existingArticle);
+                    } else {
+                        // Insert new article with favorite status
+                        article.setFavorite(isFavorite);
+                        articleDao.insertArticle(article);
+                    }
+
+                    // Log success
+                    android.util.Log.d("NewsAdapter", "Favorite status updated in database: " +
+                            article.getTitle() + " -> " + isFavorite);
+
+                } catch (Exception e) {
+                    android.util.Log.e("NewsAdapter", "Error updating favorite in database", e);
+
+                    // Revert UI change on error
+                    if (mainHandler != null) {
+                        mainHandler.post(() -> {
+                            article.setFavorite(!isFavorite); // Revert
+                            updateFavoriteIcon(article);
+                            Toast.makeText(binding.getRoot().getContext(),
+                                    "Error updating favorite", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+        }
+
+        private void updateBookmarkButton(Article article) {
+            if (binding.buttonBookmark != null) {
+                if (article.isFavorite()) {
+                    binding.buttonBookmark.setImageResource(R.drawable.ic_favorite_filled);
+                    binding.buttonBookmark.setColorFilter(
+                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.error_color));
+                } else {
+                    binding.buttonBookmark.setImageResource(R.drawable.ic_favorite_border);
+                    binding.buttonBookmark.setColorFilter(
+                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.on_surface_variant));
+                }
+            }
+        }
+
         private void loadArticleImage(Article article) {
-            if (article.getUrlToImage() != null && !article.getUrlToImage().isEmpty()) {
-                Glide.with(binding.getRoot().getContext())
-                        .load(article.getUrlToImage())
-                        .apply(new RequestOptions()
-                                .transform(new RoundedCorners(24))
-                                .placeholder(R.drawable.placeholder_image)
-                                .error(R.drawable.placeholder_image)
-                                .centerCrop())
-                        .into(binding.imageNews);
-                binding.imageNews.setVisibility(View.VISIBLE);
-            } else {
+            try {
+                if (article.getUrlToImage() != null && !article.getUrlToImage().isEmpty()) {
+                    Glide.with(binding.getRoot().getContext())
+                            .load(article.getUrlToImage())
+                            .apply(new RequestOptions()
+                                    .transform(new RoundedCorners(24))
+                                    .placeholder(R.drawable.placeholder_image)
+                                    .error(R.drawable.placeholder_image)
+                                    .centerCrop())
+                            .into(binding.imageNews);
+                } else {
+                    binding.imageNews.setImageResource(R.drawable.placeholder_image);
+                }
+            } catch (Exception e) {
+                android.util.Log.e("NewsAdapter", "Error loading image: " + e.getMessage(), e);
                 binding.imageNews.setImageResource(R.drawable.placeholder_image);
-                binding.imageNews.setVisibility(View.VISIBLE);
             }
         }
 
         private void setCategoryBadge(Article article) {
-            // Set category badge berdasarkan source atau content
             if (binding.textCategory != null) {
                 String category = determineCategoryFromSource(article);
                 if (category != null) {
                     binding.textCategory.setText(category);
-                    binding.textCategory.setVisibility(View.VISIBLE);
+                    binding.categoryContainer.setVisibility(View.VISIBLE);
                 } else {
-                    binding.textCategory.setVisibility(View.GONE);
+                    binding.categoryContainer.setVisibility(View.GONE);
                 }
             }
         }
@@ -165,71 +336,24 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
 
             String sourceName = article.getSource().getName().toLowerCase();
 
-            // Technology sources
             if (sourceName.contains("tech") || sourceName.contains("wired") ||
                     sourceName.contains("verge") || sourceName.contains("ars")) {
                 return "Technology";
             }
-
-            // Business sources
             if (sourceName.contains("bloomberg") || sourceName.contains("fortune") ||
                     sourceName.contains("business") || sourceName.contains("financial")) {
                 return "Business";
             }
-
-            // Sports sources
             if (sourceName.contains("espn") || sourceName.contains("sport") ||
                     sourceName.contains("athletic")) {
                 return "Sports";
             }
-
-            // Entertainment sources
             if (sourceName.contains("entertainment") || sourceName.contains("variety") ||
                     sourceName.contains("hollywood")) {
                 return "Entertainment";
             }
 
-            return null; // Default: no category badge
-        }
-
-        private void setupClickListeners(Article article) {
-            // Main card click
-            binding.cardView.setOnClickListener(v -> {
-                if (onItemClickListener != null) {
-                    onItemClickListener.onItemClick(article);
-                }
-            });
-
-            // Share button
-            if (binding.buttonShare != null) {
-                binding.buttonShare.setOnClickListener(v -> {
-                    if (onItemActionListener != null) {
-                        onItemActionListener.onShareClick(article);
-                    } else {
-                        // Default share functionality
-                        shareArticle(article);
-                    }
-                });
-            }
-
-            // Bookmark button
-            if (binding.buttonBookmark != null) {
-                binding.buttonBookmark.setOnClickListener(v -> {
-                    if (onItemActionListener != null) {
-                        onItemActionListener.onBookmarkClick(article);
-                    } else {
-                        // Default bookmark functionality
-                        toggleBookmark(article);
-                    }
-                });
-            }
-
-            // Favorite icon click
-            binding.imageFavorite.setOnClickListener(v -> {
-                if (onItemActionListener != null) {
-                    onItemActionListener.onFavoriteClick(article);
-                }
-            });
+            return null;
         }
 
         private void shareArticle(Article article) {
@@ -259,32 +383,12 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
             }
         }
 
-        private void toggleBookmark(Article article) {
-            // Toggle bookmark state
-            boolean isBookmarked = !article.isFavorite();
-            article.setFavorite(isBookmarked);
-
-            // Update UI
-            if (binding.buttonBookmark != null) {
-                binding.buttonBookmark.setImageResource(
-                        isBookmarked ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border);
-            }
-
-            // Update favorite indicator
-            if (isBookmarked) {
-                binding.imageFavorite.setVisibility(View.VISIBLE);
-            } else {
-                binding.imageFavorite.setVisibility(View.GONE);
-            }
-        }
-
         private void animateItemEntry() {
-            // Subtle fade-in animation
             binding.cardView.setAlpha(0f);
             binding.cardView.animate()
                     .alpha(1f)
                     .setDuration(300)
-                    .setStartDelay(getAdapterPosition() * 50) // Staggered animation
+                    .setStartDelay(getAdapterPosition() * 50)
                     .start();
         }
 
@@ -301,15 +405,19 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                 return "2 min read";
             }
 
-            // Rata-rata 200 kata per menit
             String[] words = textToAnalyze.split("\\s+");
             int wordCount = words.length;
-
-            // Estimasi berdasarkan content yang ada + asumsi artikel penuh
             int estimatedFullWordCount = wordCount < 50 ? wordCount * 20 : wordCount * 5;
             int minutes = Math.max(1, estimatedFullWordCount / 200);
 
             return minutes + " min read";
+        }
+    }
+
+    // ADDED: Cleanup method
+    public void cleanup() {
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
         }
     }
 }

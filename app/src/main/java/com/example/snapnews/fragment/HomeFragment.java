@@ -1,6 +1,7 @@
 package com.example.snapnews.fragment;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -16,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.example.snapnews.activity.MainActivity;
 import com.example.snapnews.network.RetrofitClient;
 import com.example.snapnews.R;
 import com.example.snapnews.adapter.FilterChipAdapter;
@@ -45,16 +47,13 @@ public class HomeFragment extends Fragment {
     private List<FilterChip> filterChips = new ArrayList<>();
     private NewsApiService newsApiService;
 
-    // Database components
     private ArticleDao articleDao;
     private NewsDatabaseHelper dbHelper;
 
-    // Threading components
     private ExecutorService executorService;
     private Handler mainHandler;
     private FilterChip currentFilter;
 
-    // Network call management
     private Call<NewsResponse> currentCall;
 
     @Override
@@ -123,10 +122,76 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        newsAdapter.initializeDatabase(dbHelper);
+
+        newsAdapter.setOnItemActionListener(new NewsAdapter.OnItemActionListener() {
+            @Override
+            public void onShareClick(Article article) {
+                shareArticle(article);
+            }
+
+            @Override
+            public void onBookmarkClick(Article article) {
+                // Same as favorite for consistency
+                handleFavoriteChange(article);
+            }
+
+            @Override
+            public void onFavoriteClick(Article article) {
+                handleFavoriteChange(article);
+            }
+
+            @Override
+            public void onFavoriteChanged(Article article) {
+                // ADDED: Handle favorite change callback
+                handleFavoriteChange(article);
+            }
+        });
+
         binding.recyclerViewNews.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerViewNews.setAdapter(newsAdapter);
 
-        Log.d(TAG, "RecyclerViews setup completed");
+        Log.d(TAG, "RecyclerViews setup completed with database sync");
+    }
+
+    private void handleFavoriteChange(Article article) {
+        Log.d(TAG, "Favorite changed for article: " + article.getTitle() +
+                " -> " + article.isFavorite());
+
+        // Notify MainActivity about favorite change (optional)
+        if (getActivity() != null && getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).onFavoriteChanged(article);
+        }
+    }
+
+    private void shareArticle(Article article) {
+        try {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+
+            String shareText = "";
+            if (article.getTitle() != null) {
+                shareText += article.getTitle() + "\n\n";
+            }
+            if (article.getDescription() != null) {
+                shareText += article.getDescription() + "\n\n";
+            }
+            if (article.getUrl() != null) {
+                shareText += "Read more: " + article.getUrl() + "\n\n";
+            }
+            shareText += "Shared via SnapNews";
+
+            shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+            shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            startActivity(Intent.createChooser(shareIntent, "Share article"));
+            Log.d(TAG, "Share intent started successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sharing article: " + e.getMessage(), e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Unable to share article", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setupSwipeRefresh() {
@@ -139,6 +204,40 @@ public class HomeFragment extends Fragment {
                 R.color.primary_color,
                 R.color.secondary_color
         );
+    }
+
+    private void loadFavoriteStatusForArticles() {
+        if (executorService == null || executorService.isShutdown() || !isAdded()) {
+            return;
+        }
+
+        executorService.execute(() -> {
+            try {
+                // Load favorite status untuk semua articles
+                for (Article article : articles) {
+                    if (article.getUrl() != null) {
+                        Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+                        if (existingArticle != null) {
+                            article.setFavorite(existingArticle.isFavorite());
+                            article.setId(existingArticle.getId());
+                        }
+                    }
+                }
+
+                // Update UI
+                if (isAdded() && mainHandler != null) {
+                    mainHandler.post(() -> {
+                        if (isAdded() && newsAdapter != null) {
+                            newsAdapter.notifyDataSetChanged();
+                            Log.d(TAG, "Favorite status loaded from database");
+                        }
+                    });
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading favorite status", e);
+            }
+        });
     }
 
     private void onFilterChipClicked(FilterChip filterChip, int position) {
@@ -361,7 +460,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void saveArticlesToDatabase(List<Article> articles) {
-        // Check if executor is available and fragment is still valid
         if (executorService == null || executorService.isShutdown() || !isAdded()) {
             Log.w(TAG, "Executor unavailable or fragment not attached, skipping database save");
             return;
@@ -380,6 +478,8 @@ public class HomeFragment extends Fragment {
 
                 articleDao.insertArticles(articles);
                 Log.d(TAG, "Articles saved successfully to NewsDatabaseHelper");
+
+                loadFavoriteStatusForArticles();
 
             } catch (Exception e) {
                 Log.e(TAG, "Error saving articles to NewsDatabaseHelper", e);
@@ -473,6 +573,17 @@ public class HomeFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "Fragment resumed - refreshing favorite status");
+
+        // Refresh favorite status dari database
+        if (articles != null && !articles.isEmpty()) {
+            loadFavoriteStatusForArticles();
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         Log.d(TAG, "onDestroyView called");
 
@@ -490,7 +601,10 @@ public class HomeFragment extends Fragment {
         // Cancel any ongoing network calls
         cancelCurrentCall();
 
-        // Shutdown executor service
+        if (newsAdapter != null) {
+            newsAdapter.cleanup();
+        }
+
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
             Log.d(TAG, "ExecutorService shutdown");

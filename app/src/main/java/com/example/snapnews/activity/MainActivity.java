@@ -9,9 +9,11 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.fragment.app.Fragment;
 
 import com.example.snapnews.activity.DetailActivity;
 import com.example.snapnews.models.Article;
+import com.example.snapnews.fragment.FavoritesFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.example.snapnews.R;
 import com.example.snapnews.databinding.ActivityMainBinding;
@@ -58,27 +60,22 @@ public class MainActivity extends AppCompatActivity {
     private void setupToolbar() {
         setSupportActionBar(binding.toolbar);
 
-        // Disable default title and use custom title
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        // Set custom title
         binding.toolbarTitle.setText(getString(R.string.app_name));
     }
 
     private void setupBottomNavigation() {
         BottomNavigationView navView = binding.navView;
 
-        // Setup navigation controller
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
 
-        // Setup app bar configuration WITHOUT automatic title changes
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_search, R.id.navigation_favorites)
                 .build();
 
-        // Only setup bottom navigation, NOT the action bar
         NavigationUI.setupWithNavController(navView, navController);
 
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
@@ -128,12 +125,49 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    public void onFavoriteChanged(Article article) {
+        android.util.Log.d("MainActivity", "Favorite changed: " + article.getTitle() +
+                " -> " + article.isFavorite());
+
+        // Refresh favorites fragment jika sedang aktif atau akan dibuka
+        refreshFavoritesFragment();
+    }
+
+    private void refreshFavoritesFragment() {
+        try {
+            // Find current fragment
+            NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+            Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
+
+            if (currentFragment != null) {
+                // Check if current fragment container has FavoritesFragment
+                Fragment navHostFragment = currentFragment.getChildFragmentManager().getFragments().get(0);
+                if (navHostFragment instanceof FavoritesFragment) {
+                    // Refresh favorites fragment
+                    ((FavoritesFragment) navHostFragment).refreshFavorites();
+                    android.util.Log.d("MainActivity", "Refreshed FavoritesFragment");
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error refreshing favorites fragment", e);
+        }
+    }
+
+    public void refreshFavoritesOnNavigation() {
+        // Delay sedikit untuk memastikan fragment sudah loaded
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            refreshFavoritesFragment();
+        }, 100);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         if (themeManager != null) {
             themeManager.initializeTheme();
         }
+
+        refreshFavoritesOnNavigation();
     }
 
     @Override

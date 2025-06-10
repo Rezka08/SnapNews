@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Enhanced Header dengan gambar -->
+        <!-- Enhanced Header dengan gambar dan favorite icon -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="220dp">
@@ -41,18 +41,17 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/gradient_overlay" />
 
-            <!-- Floating favorite icon -->
+            <!-- FIXED: Favorite Icon - Always Present, Visibility Controlled -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/favorite_container"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="16dp"
-                android:visibility="gone"
                 app:cardCornerRadius="22dp"
-                app:cardElevation="6dp"
+                app:cardElevation="8dp"
                 app:cardBackgroundColor="?attr/colorSurface"
-                tools:visibility="visible">
+                android:alpha="0.95">
 
                 <ImageView
                     android:id="@+id/image_favorite"
@@ -60,8 +59,10 @@
                     android:layout_height="24dp"
                     android:layout_gravity="center"
                     android:contentDescription="@string/favorite_icon"
-                    android:src="@drawable/ic_favorite_filled"
-                    app:tint="?attr/colorError" />
+                    android:src="@drawable/ic_favorite_border"
+                    app:tint="?attr/colorError"
+                    tools:src="@drawable/ic_favorite_filled"
+                    tools:tint="#F44336" />
 
             </com.google.android.material.card.MaterialCardView>
 
@@ -269,6 +270,7 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="2dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?android:attr/selectableItemBackgroundBorderless"
@@ -292,6 +294,7 @@
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="36dp"
                         android:layout_height="36dp"
+                        android:layout_marginBottom="2dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?android:attr/selectableItemBackgroundBorderless"
