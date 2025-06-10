@@ -41,18 +41,15 @@ public class DetailActivity extends AppCompatActivity {
     private ActivityDetailBinding binding;
     private Article article;
 
-    // Database components
     private ArticleDao articleDao;
     private NewsDatabaseHelper dbHelper;
     private ExecutorService executorService;
     private Handler mainHandler;
     private boolean isDestroyed = false;
 
-    // Reading mode components
     private boolean isLoadingFullArticle = false;
     private String currentMode = "summary";
 
-    // Intent extras constants
     public static final String EXTRA_ARTICLE_TITLE = "extra_article_title";
     public static final String EXTRA_ARTICLE_DESCRIPTION = "extra_article_description";
     public static final String EXTRA_ARTICLE_URL = "extra_article_url";
@@ -531,12 +528,12 @@ public class DetailActivity extends AppCompatActivity {
             // Setup toolbar navigation
             binding.toolbar.setNavigationOnClickListener(v -> safeFinish());
 
-            // Share button
+            // Setup Share FAB - simple click only
             if (binding.fabShare != null) {
                 binding.fabShare.setOnClickListener(v -> shareArticleSafely());
             }
 
-            // Open browser button
+            // Setup Open Browser FAB - simple click only
             if (binding.fabOpenBrowser != null) {
                 binding.fabOpenBrowser.setOnClickListener(v -> openInBrowserSafely());
             }
@@ -546,7 +543,6 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    // ENHANCED BROWSER OPENING FUNCTIONALITY
     private void openInBrowserSafely() {
         String url = null;
         try {
@@ -577,8 +573,10 @@ public class DetailActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             Log.e(TAG, "Error opening browser: " + e.getMessage(), e);
-            // Now url is always defined
-            loadUrlInInternalWebView(url);
+            // Load in internal WebView as fallback
+            if (url != null) {
+                loadUrlInInternalWebView(url);
+            }
         }
     }
 
@@ -729,6 +727,7 @@ public class DetailActivity extends AppCompatActivity {
 
             startActivity(Intent.createChooser(shareIntent, "Share article"));
             Log.d(TAG, "Share intent started successfully");
+
         } catch (Exception e) {
             Log.e(TAG, "Error sharing article: " + e.getMessage(), e);
             Toast.makeText(this, "Unable to share article", Toast.LENGTH_SHORT).show();

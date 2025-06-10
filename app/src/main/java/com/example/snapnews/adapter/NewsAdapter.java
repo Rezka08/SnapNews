@@ -97,6 +97,38 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         }
     }
 
+    public void refreshFavoriteStatuses() {
+        if (articleDao == null || executorService == null || executorService.isShutdown()) {
+            return;
+        }
+
+        executorService.execute(() -> {
+            try {
+                // Load favorite status untuk semua articles dari database
+                for (Article article : articles) {
+                    if (article.getUrl() != null) {
+                        Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+                        if (existingArticle != null) {
+                            article.setFavorite(existingArticle.isFavorite());
+                            article.setId(existingArticle.getId());
+                        }
+                    }
+                }
+
+                // Update UI di main thread
+                if (mainHandler != null) {
+                    mainHandler.post(() -> {
+                        notifyDataSetChanged();
+                        android.util.Log.d("NewsAdapter", "Favorite statuses refreshed for all articles");
+                    });
+                }
+
+            } catch (Exception e) {
+                android.util.Log.e("NewsAdapter", "Error refreshing favorite statuses", e);
+            }
+        });
+    }
+
     class NewsViewHolder extends RecyclerView.ViewHolder {
         private ItemNewsBinding binding;
 
@@ -153,9 +185,11 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
 
         private void updateFavoriteIcon(Article article) {
             if (binding.favoriteContainer != null && binding.imageFavorite != null) {
+                // ALWAYS show the favorite container
+                binding.favoriteContainer.setVisibility(View.VISIBLE);
+
                 if (article.isFavorite()) {
-                    // Artikel sudah di-favorite
-                    binding.favoriteContainer.setVisibility(View.VISIBLE);
+                    // Artikel sudah di-favorite - red filled heart
                     binding.imageFavorite.setImageResource(R.drawable.ic_favorite_filled);
                     binding.imageFavorite.setColorFilter(
                             ContextCompat.getColor(binding.getRoot().getContext(), R.color.error_color));
@@ -168,9 +202,15 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                             .scaleY(1.0f)
                             .setDuration(200)
                             .start();
+
+                    android.util.Log.d("NewsAdapter", "Article " + article.getTitle() + " - FAVORITE: true");
                 } else {
-                    // Artikel belum di-favorite - hide icon
-                    binding.favoriteContainer.setVisibility(View.GONE);
+                    // Artikel belum di-favorite - outline heart
+                    binding.imageFavorite.setImageResource(R.drawable.ic_favorite_border);
+                    binding.imageFavorite.setColorFilter(
+                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.on_surface_variant));
+
+                    android.util.Log.d("NewsAdapter", "Article " + article.getTitle() + " - FAVORITE: false");
                 }
             }
         }
@@ -182,6 +222,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                 }
             });
 
+            // ONLY favorite container click listener (top-right favorite icon)
             if (binding.favoriteContainer != null) {
                 binding.favoriteContainer.setOnClickListener(v -> {
                     // Toggle favorite status
@@ -191,7 +232,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                     // Update UI immediately for responsive feel
                     updateFavoriteIcon(article);
 
-                    // FIXED: Save to database asynchronously
+                    // Save to database asynchronously
                     saveFavoriteToDatabase(article, newFavoriteStatus);
 
                     // Show feedback
@@ -203,10 +244,12 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                     if (onItemActionListener != null) {
                         onItemActionListener.onFavoriteChanged(article);
                     }
+
+                    android.util.Log.d("NewsAdapter", "Favorite toggled: " + article.getTitle() + " -> " + newFavoriteStatus);
                 });
             }
 
-            // Share button
+            // Share button ONLY
             if (binding.buttonShare != null) {
                 binding.buttonShare.setOnClickListener(v -> {
                     if (onItemActionListener != null) {
@@ -217,30 +260,13 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                 });
             }
 
-            // Bookmark button (same as favorite for consistency)
-            if (binding.buttonBookmark != null) {
-                binding.buttonBookmark.setOnClickListener(v -> {
-                    // Same logic as favorite icon
-                    boolean newFavoriteStatus = !article.isFavorite();
-                    article.setFavorite(newFavoriteStatus);
-                    updateFavoriteIcon(article);
-                    updateBookmarkButton(article);
-                    saveFavoriteToDatabase(article, newFavoriteStatus);
-
-                    String message = newFavoriteStatus ?
-                            "Added to favorites" : "Removed from favorites";
-                    Toast.makeText(binding.getRoot().getContext(), message, Toast.LENGTH_SHORT).show();
-
-                    if (onItemActionListener != null) {
-                        onItemActionListener.onFavoriteChanged(article);
-                    }
-                });
-            }
+            // REMOVED: Bookmark button click listener - tidak digunakan lagi
         }
 
         private void saveFavoriteToDatabase(Article article, boolean isFavorite) {
             if (articleDao == null || executorService == null) {
-                return; // Database not initialized
+                android.util.Log.w("NewsAdapter", "Database not initialized, cannot save favorite");
+                return;
             }
 
             executorService.execute(() -> {
@@ -257,15 +283,20 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                         // Update existing article
                         existingArticle.setFavorite(isFavorite);
                         articleDao.updateArticle(existingArticle);
+
+                        // Update local article ID
+                        article.setId(existingArticle.getId());
+
+                        android.util.Log.d("NewsAdapter", "Updated existing article favorite status: " +
+                                article.getTitle() + " -> " + isFavorite);
                     } else {
                         // Insert new article with favorite status
                         article.setFavorite(isFavorite);
                         articleDao.insertArticle(article);
-                    }
 
-                    // Log success
-                    android.util.Log.d("NewsAdapter", "Favorite status updated in database: " +
-                            article.getTitle() + " -> " + isFavorite);
+                        android.util.Log.d("NewsAdapter", "Inserted new article with favorite status: " +
+                                article.getTitle() + " -> " + isFavorite);
+                    }
 
                 } catch (Exception e) {
                     android.util.Log.e("NewsAdapter", "Error updating favorite in database", e);
@@ -281,20 +312,6 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                     }
                 }
             });
-        }
-
-        private void updateBookmarkButton(Article article) {
-            if (binding.buttonBookmark != null) {
-                if (article.isFavorite()) {
-                    binding.buttonBookmark.setImageResource(R.drawable.ic_favorite_filled);
-                    binding.buttonBookmark.setColorFilter(
-                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.error_color));
-                } else {
-                    binding.buttonBookmark.setImageResource(R.drawable.ic_favorite_border);
-                    binding.buttonBookmark.setColorFilter(
-                            ContextCompat.getColor(binding.getRoot().getContext(), R.color.on_surface_variant));
-                }
-            }
         }
 
         private void loadArticleImage(Article article) {
@@ -414,7 +431,6 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         }
     }
 
-    // ADDED: Cleanup method
     public void cleanup() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();

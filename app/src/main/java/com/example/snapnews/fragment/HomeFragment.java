@@ -143,7 +143,7 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFavoriteChanged(Article article) {
-                // ADDED: Handle favorite change callback
+                // Handle favorite change callback
                 handleFavoriteChange(article);
             }
         });
@@ -206,30 +206,43 @@ public class HomeFragment extends Fragment {
         );
     }
 
+    // IMPROVED: Better favorite status loading with error handling
     private void loadFavoriteStatusForArticles() {
         if (executorService == null || executorService.isShutdown() || !isAdded()) {
+            Log.w(TAG, "Cannot load favorite status - fragment not ready");
             return;
         }
 
+        Log.d(TAG, "Loading favorite status for " + articles.size() + " articles");
+
         executorService.execute(() -> {
             try {
-                // Load favorite status untuk semua articles
+                // Load favorite status untuk semua articles dari database
+                int updatedCount = 0;
                 for (Article article : articles) {
                     if (article.getUrl() != null) {
                         Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
                         if (existingArticle != null) {
+                            boolean oldStatus = article.isFavorite();
                             article.setFavorite(existingArticle.isFavorite());
                             article.setId(existingArticle.getId());
+
+                            if (oldStatus != article.isFavorite()) {
+                                updatedCount++;
+                                Log.d(TAG, "Updated favorite status for: " + article.getTitle() +
+                                        " -> " + article.isFavorite());
+                            }
                         }
                     }
                 }
 
-                // Update UI
+                // Update UI di main thread
                 if (isAdded() && mainHandler != null) {
+                    final int finalUpdatedCount = updatedCount;
                     mainHandler.post(() -> {
                         if (isAdded() && newsAdapter != null) {
                             newsAdapter.notifyDataSetChanged();
-                            Log.d(TAG, "Favorite status loaded from database");
+                            Log.d(TAG, "Favorite status loaded - " + finalUpdatedCount + " articles updated");
                         }
                     });
                 }
@@ -238,6 +251,14 @@ public class HomeFragment extends Fragment {
                 Log.e(TAG, "Error loading favorite status", e);
             }
         });
+    }
+
+    // ADDED: Method to refresh favorite statuses using NewsAdapter
+    private void refreshAllFavoriteStatuses() {
+        if (newsAdapter != null) {
+            Log.d(TAG, "Refreshing all favorite statuses via NewsAdapter");
+            newsAdapter.refreshFavoriteStatuses();
+        }
     }
 
     private void onFilterChipClicked(FilterChip filterChip, int position) {
@@ -336,12 +357,15 @@ public class HomeFragment extends Fragment {
 
                         Log.d(TAG, "Articles added to list. Current list size: " + articles.size());
 
+                        // Save to NewsDatabaseHelper first
+                        saveArticlesToDatabase(newsResponse.getArticles());
+
+                        // IMPROVED: Load favorite statuses after saving
+                        loadFavoriteStatusForArticles();
+
                         // Notify adapter
                         newsAdapter.notifyDataSetChanged();
                         Log.d(TAG, "Adapter notified");
-
-                        // Save to NewsDatabaseHelper
-                        saveArticlesToDatabase(newsResponse.getArticles());
 
                         showContent();
 
@@ -435,6 +459,10 @@ public class HomeFragment extends Fragment {
                             articles.clear();
                             articles.addAll(cachedArticles);
                             newsAdapter.notifyDataSetChanged();
+
+                            // ADDED: Refresh favorite statuses after loading from database
+                            refreshAllFavoriteStatuses();
+
                             showContent();
 
                             String message = "📱 Offline: showing cached " + currentFilter.getName() + " news";
@@ -478,8 +506,6 @@ public class HomeFragment extends Fragment {
 
                 articleDao.insertArticles(articles);
                 Log.d(TAG, "Articles saved successfully to NewsDatabaseHelper");
-
-                loadFavoriteStatusForArticles();
 
             } catch (Exception e) {
                 Log.e(TAG, "Error saving articles to NewsDatabaseHelper", e);
@@ -577,9 +603,10 @@ public class HomeFragment extends Fragment {
         super.onResume();
         Log.d(TAG, "Fragment resumed - refreshing favorite status");
 
-        // Refresh favorite status dari database
+        // IMPROVED: Refresh favorite status untuk semua articles ketika fragment resumed
         if (articles != null && !articles.isEmpty()) {
-            loadFavoriteStatusForArticles();
+            // Use the new method from NewsAdapter
+            refreshAllFavoriteStatuses();
         }
     }
 
