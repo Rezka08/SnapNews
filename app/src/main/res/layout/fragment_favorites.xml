@@ -7,13 +7,12 @@
     android:background="?android:colorBackground"
     tools:context=".fragment.FavoritesFragment">
 
-    <!-- FIXED: Favorites RecyclerView dengan proper bottom padding -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view_favorites"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="80dp"
         android:padding="8dp"
-        android:paddingBottom="120dp"
         android:clipToPadding="false"
         android:scrollbars="none"
         android:fadeScrollbars="true"
@@ -99,12 +98,12 @@
                 android:layout_marginEnd="8dp"
                 android:src="@drawable/ic_favorite_filled"
                 app:tint="?attr/colorError"
-                android:contentDescription="Favorite icon" />
+                android:contentDescription="@string/favorite_icon" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tap the heart icon to save articles"
+                android:text="@string/favorites_heart"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurface"
                 android:fontFamily="sans-serif-medium" />
@@ -117,7 +116,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Browse News"
+            android:text="@string/browsing"
             android:textColor="?attr/colorOnPrimary"
             android:fontFamily="sans-serif-medium"
             android:paddingHorizontal="24dp"

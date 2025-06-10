@@ -22,6 +22,7 @@
     <string name="politics">Politics</string>
     <string name="world">World</string>
     <string name="general">General</string>
+    <string name="trending">Trending</string>
 
     <!-- Enhanced Category Descriptions -->
     <string name="category_latest_desc">Breaking news and latest updates</string>
@@ -51,6 +52,8 @@
     <string name="removed_from_favorites">Removed from favorites</string>
     <string name="favorites_empty_title">Your Reading List is Empty</string>
     <string name="favorites_empty_subtitle">Bookmark articles you want to read later</string>
+    <string name="favorites_heart">Tap the heart icon to save articles</string>
+    <string name="browsing">Browse Newws</string>
 
     <!-- Detail Activity -->
     <string name="article_image">Article image</string>
@@ -150,7 +153,7 @@
     <string name="about">About</string>
     <string name="version">Version</string>
     <string name="app_version">1.0.0</string>
-    <string name="developed_with_love">Developed by Rezka Wildan</string>
+    <string name="developed_by">Developed by Rezka Wildan</string>
     <string name="powered_by_newsapi">Powered by NewsAPI.org</string>
     <string name="cancel">Cancel</string>
     <string name="apply">Apply</string>
@@ -173,6 +176,7 @@
     <string name="live_icon">Live icon</string>
     <string name="update_available_icon">Update available</string>
     <string name="refresh_icon">Refresh icon</string>
+    <string name="three_min_read">3 min read</string>
 
     <!-- Share and Actions -->
     <string name="share">Share</string>
@@ -233,6 +237,7 @@
     <string name="close_navigation">Close navigation</string>
     <string name="scroll_to_top">Scroll to top</string>
     <string name="article_options">Article options</string>
+    <string name="filter">Filter</string>
 
     <!-- Connection Status -->
     <string name="connected">Connected</string>

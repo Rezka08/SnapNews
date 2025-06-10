@@ -20,7 +20,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Enhanced Header dengan gambar dan favorite icon -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="220dp">
@@ -41,7 +40,7 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/gradient_overlay" />
 
-            <!-- FIXED: Favorite Icon - Always Present, Visibility Controlled -->
+            <!-- MAIN Favorite Icon - Always Present, Visibility Controlled -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/favorite_container"
                 android:layout_width="44dp"
@@ -86,7 +85,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Technology"
+                    android:text="@string/technology"
                     android:textColor="@color/white"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -124,7 +123,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:text="3 min read"
+                        android:text="@string/three_min_read"
                         android:textColor="@color/white"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -157,7 +156,7 @@
                         android:layout_width="12dp"
                         android:layout_height="12dp"
                         android:layout_marginEnd="4dp"
-                        android:contentDescription="Trending"
+                        android:contentDescription="@string/trending"
                         android:src="@drawable/ic_trending_up"
                         app:tint="@color/white" />
 
@@ -165,7 +164,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:text="TRENDING"
+                        android:text="@string/trending_badge"
                         android:textColor="@color/white"
                         android:textSize="9sp"
                         android:textStyle="bold" />
@@ -258,18 +257,16 @@
 
                 </LinearLayout>
 
-                <!-- Enhanced Action buttons -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Share button -->
+                    <!-- Share button ONLY -->
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="36dp"
                         android:layout_height="36dp"
-                        android:layout_marginEnd="8dp"
                         android:layout_marginBottom="2dp"
                         android:clickable="true"
                         android:focusable="true"
@@ -290,29 +287,7 @@
 
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Bookmark button -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginBottom="2dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:foreground="?android:attr/selectableItemBackgroundBorderless"
-                        app:cardCornerRadius="18dp"
-                        app:cardElevation="2dp"
-                        app:cardBackgroundColor="?attr/colorSurfaceVariant">
-
-                        <ImageButton
-                            android:id="@+id/button_bookmark"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:layout_gravity="center"
-                            android:background="@color/transparent"
-                            android:contentDescription="@string/bookmark"
-                            android:src="@drawable/ic_favorite_border"
-                            app:tint="?attr/colorPrimary" />
-
-                    </com.google.android.material.card.MaterialCardView>
+                    <!-- REMOVED: Bookmark button dihapus -->
 
                 </LinearLayout>
 

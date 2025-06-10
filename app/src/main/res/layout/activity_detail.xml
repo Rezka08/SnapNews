@@ -4,13 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.DetailActivity">
+    tools:context=".activity.DetailActivity"
+    android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        android:paddingTop="8dp">
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" >
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -33,7 +33,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="80dp">
+            android:paddingBottom="100dp">
 
             <!-- Article Header -->
             <com.google.android.material.card.MaterialCardView
@@ -59,7 +59,7 @@
                             android:layout_height="match_parent"
                             android:scaleType="centerCrop"
                             android:background="@color/light_gray"
-                            android:contentDescription="Article image" />
+                            android:contentDescription="@string/article_image" />
 
                         <!-- Gradient overlay -->
                         <View
@@ -85,13 +85,13 @@
                                 android:layout_height="16dp"
                                 android:src="@drawable/ic_access_time"
                                 android:layout_marginEnd="4dp"
-                                android:contentDescription="Time icon" />
+                                android:contentDescription="@string/time_icon" />
 
                             <TextView
                                 android:id="@+id/text_reading_time"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="3 min read"
+                                android:text="@string/three_min_read"
                                 android:textColor="@color/white"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -132,7 +132,7 @@
                                 android:src="@drawable/ic_person"
                                 android:layout_marginEnd="6dp"
                                 android:alpha="0.6"
-                                android:contentDescription="Author icon" />
+                                android:contentDescription="@string/author_icon" />
 
                             <TextView
                                 android:id="@+id/text_author_date"
@@ -185,7 +185,7 @@
                         android:layout_height="24dp"
                         android:src="@drawable/ic_article"
                         android:layout_marginEnd="12dp"
-                        android:contentDescription="Article icon" />
+                        android:contentDescription="@string/article_icon" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -196,7 +196,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Reading Mode"
+                            android:text="@string/reading_mode"
                             android:textStyle="bold"
                             android:textSize="14sp"
                             android:textColor="?attr/colorOnSurface" />
@@ -205,7 +205,7 @@
                             android:id="@+id/text_mode_description"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Tap to read full article"
+                            android:text="@string/tap_to_read_full"
                             android:textSize="12sp"
                             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -215,7 +215,7 @@
                         android:id="@+id/button_toggle_mode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Full Article"
+                        android:text="@string/full_article"
                         android:textSize="12sp"
                         style="@style/Widget.MaterialComponents.Button" />
 
@@ -253,44 +253,32 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Bottom Action Bar -->
-    <com.google.android.material.bottomappbar.BottomAppBar
-        android:layout_width="match_parent"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_share"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        app:elevation="8dp">
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="32dp"
+        android:src="@drawable/ic_share"
+        android:contentDescription="@string/share_article"
+        app:tint="@color/white"
+        app:backgroundTint="?attr/colorSecondary"
+        app:elevation="8dp"
+        app:borderWidth="0dp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp">
-
-            <Button
-                android:id="@+id/fab_share"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="Share"
-                android:drawableLeft="@drawable/ic_share"
-                android:drawablePadding="8dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-            <Button
-                android:id="@+id/fab_open_browser"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="Open Browser"
-                android:drawableLeft="@drawable/ic_open_in_browser"
-                android:drawablePadding="8dp"
-                style="@style/Widget.MaterialComponents.Button" />
-
-        </LinearLayout>
-
-    </com.google.android.material.bottomappbar.BottomAppBar>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_open_browser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="32dp"
+        android:src="@drawable/ic_open_in_browser"
+        android:contentDescription="@string/open_in_browser"
+        app:tint="@color/white"
+        app:backgroundTint="?attr/colorPrimary"
+        app:elevation="8dp"
+        app:borderWidth="0dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

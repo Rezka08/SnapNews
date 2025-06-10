@@ -27,6 +27,6 @@
         android:fontFamily="sans-serif-medium"
         android:singleLine="true"
         android:textColor="@drawable/chip_text_selector"
-        android:text="Filter" />
+        android:text="@string/filter" />
 
 </LinearLayout>

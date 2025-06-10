@@ -17,9 +17,9 @@
         android:theme="@style/Theme.SnapNews"
         tools:targetApi="31">
 
-        <!-- Main Activity -->
         <activity
             android:name=".activity.MainActivity"
+            android:windowSoftInputMode="adjustPan"
             android:exported="true"
             android:theme="@style/Theme.SnapNews.NoActionBar">
             <intent-filter>
@@ -28,14 +28,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Detail Activity -->
         <activity
             android:name=".activity.DetailActivity"
             android:exported="false"
             android:parentActivityName=".activity.MainActivity"
             android:theme="@style/Theme.SnapNews.NoActionBar" />
 
-        <!-- Settings Activity -->
         <activity
             android:name=".activity.SettingsActivity"
             android:exported="false"
