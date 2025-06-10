@@ -8,14 +8,11 @@ import android.util.Log;
 public class NewsDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NewsDatabaseHelper";
 
-    // Database Info
     private static final String DATABASE_NAME = "news_database.db";
     private static final int DATABASE_VERSION = 1;
 
-    // Table Names
     public static final String TABLE_ARTICLES = "articles";
 
-    // Article Table Columns
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_DESCRIPTION = "description";
@@ -29,7 +26,6 @@ public class NewsDatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_IS_FAVORITE = "isFavorite";
     public static final String COLUMN_TIMESTAMP = "timestamp";
 
-    // Create Articles Table SQL
     private static final String CREATE_ARTICLES_TABLE =
             "CREATE TABLE " + TABLE_ARTICLES + " (" +
                     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -46,10 +42,8 @@ public class NewsDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_TIMESTAMP + " INTEGER DEFAULT 0" +
                     ")";
 
-    // Singleton instance
     private static NewsDatabaseHelper sInstance;
 
-    // Private constructor untuk singleton
     private NewsDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         Log.d(TAG, "NewsDatabaseHelper constructor called");

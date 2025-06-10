@@ -202,41 +202,6 @@ public class FavoritesFragment extends Fragment {
         });
     }
 
-    // Method untuk menambah/menghapus favorite (dipanggil dari DetailActivity)
-    public void toggleFavorite(Article article) {
-        // Check if fragment is still valid and executor is available
-        if (!isAdded() || executorService == null || executorService.isShutdown()) {
-            Log.w(TAG, "Fragment not ready or executor unavailable, skipping favorite toggle");
-            return;
-        }
-
-        executorService.execute(() -> {
-            try {
-                Log.d(TAG, "Toggling favorite status for article: " + article.getTitle());
-
-                // Toggle status favorite
-                article.setFavorite(!article.isFavorite());
-
-                // Update di database SQLite
-                articleDao.updateArticle(article);
-
-                Log.d(TAG, "Article favorite status updated in SQLite: " + article.isFavorite());
-
-                // Refresh tampilan di main thread
-                if (isAdded() && getContext() != null && mainHandler != null) {
-                    mainHandler.post(() -> {
-                        if (isAdded() && getContext() != null) {
-                            loadFavorites();
-                        }
-                    });
-                }
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error toggling favorite status in SQLite", e);
-            }
-        });
-    }
-
     private void showLoading() {
         Log.d(TAG, "Showing loading state");
         if (binding != null && isAdded()) {

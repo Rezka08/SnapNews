@@ -95,6 +95,7 @@ public class HomeFragment extends Fragment {
         filterChips.add(new FilterChip("Entertainment", "entertainment", "us"));
         filterChips.add(new FilterChip("Sports", "sports", "us"));
         filterChips.add(new FilterChip("Health", "health", "us"));
+        filterChips.add(new FilterChip("Science", "science", "us"));
 
         currentFilter = filterChips.get(0);
         currentFilter.setSelected(true);
@@ -105,9 +106,9 @@ public class HomeFragment extends Fragment {
                 Log.d(TAG, "Filter clicked: " + filterChip.getName());
                 onFilterChipClicked(filterChip, position);
             }
-        });
+        }, true, false);
 
-        Log.d(TAG, "Filter chips setup completed with " + filterChips.size() + " chips");
+        Log.d(TAG, "Filter chips setup completed with " + filterChips.size() + " chips (including Science) - ALWAYS ONE SELECTED");
     }
 
     private void setupRecyclerViews() {
@@ -206,7 +207,6 @@ public class HomeFragment extends Fragment {
         );
     }
 
-    // IMPROVED: Better favorite status loading with error handling
     private void loadFavoriteStatusForArticles() {
         if (executorService == null || executorService.isShutdown() || !isAdded()) {
             Log.w(TAG, "Cannot load favorite status - fragment not ready");
@@ -253,7 +253,6 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    // ADDED: Method to refresh favorite statuses using NewsAdapter
     private void refreshAllFavoriteStatuses() {
         if (newsAdapter != null) {
             Log.d(TAG, "Refreshing all favorite statuses via NewsAdapter");
@@ -277,7 +276,7 @@ public class HomeFragment extends Fragment {
         newsAdapter.notifyDataSetChanged();
 
         // Force API call for new filter
-        Log.d(TAG, "FORCING API CALL for filter test");
+        Log.d(TAG, "FORCING API CALL for filter: " + filterChip.getName());
         loadNewsFromApi();
     }
 
@@ -603,9 +602,7 @@ public class HomeFragment extends Fragment {
         super.onResume();
         Log.d(TAG, "Fragment resumed - refreshing favorite status");
 
-        // IMPROVED: Refresh favorite status untuk semua articles ketika fragment resumed
         if (articles != null && !articles.isEmpty()) {
-            // Use the new method from NewsAdapter
             refreshAllFavoriteStatuses();
         }
     }

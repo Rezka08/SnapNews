@@ -17,21 +17,34 @@ public class FilterChipAdapter extends RecyclerView.Adapter<FilterChipAdapter.Ch
     private static final String TAG = "FilterChipAdapter";
     private List<FilterChip> filterChips;
     private OnChipClickListener onChipClickListener;
-    private int selectedPosition = 0;
+    private int selectedPosition = -1;
 
     public interface OnChipClickListener {
         void onChipClick(FilterChip filterChip, int position);
     }
 
-    public FilterChipAdapter(List<FilterChip> filterChips, OnChipClickListener listener) {
+    private boolean allowDeselection = true;
+
+    public FilterChipAdapter(List<FilterChip> filterChips, OnChipClickListener listener, boolean autoSelectFirst, boolean allowDeselection) {
         this.filterChips = filterChips;
         this.onChipClickListener = listener;
-        // Set first item as selected by default
-        if (!filterChips.isEmpty()) {
+        this.allowDeselection = allowDeselection;
+
+        // Only auto-select first item if autoSelectFirst is true
+        if (autoSelectFirst && !filterChips.isEmpty()) {
             filterChips.get(0).setSelected(true);
-            Log.d(TAG, "First chip selected: " + filterChips.get(0).getName());
+            selectedPosition = 0;
+            Log.d(TAG, "First chip auto-selected: " + filterChips.get(0).getName());
+        } else {
+            // Ensure no chips are selected initially
+            for (FilterChip chip : filterChips) {
+                chip.setSelected(false);
+            }
+            selectedPosition = -1;
+            Log.d(TAG, "No chips auto-selected");
         }
-        Log.d(TAG, "FilterChipAdapter created with " + filterChips.size() + " chips");
+
+        Log.d(TAG, "FilterChipAdapter created with " + filterChips.size() + " chips, autoSelectFirst: " + autoSelectFirst + ", allowDeselection: " + allowDeselection);
     }
 
     @NonNull
@@ -71,6 +84,19 @@ public class FilterChipAdapter extends RecyclerView.Adapter<FilterChipAdapter.Ch
         notifyDataSetChanged();
     }
 
+    public void clearSelection() {
+        if (selectedPosition >= 0 && selectedPosition < filterChips.size()) {
+            filterChips.get(selectedPosition).setSelected(false);
+        }
+        selectedPosition = -1;
+        notifyDataSetChanged();
+        Log.d(TAG, "All selections cleared");
+    }
+
+    public int getSelectedPosition() {
+        return selectedPosition;
+    }
+
     class ChipViewHolder extends RecyclerView.ViewHolder {
         private ItemFilterChipBinding binding;
 
@@ -92,13 +118,29 @@ public class FilterChipAdapter extends RecyclerView.Adapter<FilterChipAdapter.Ch
             // Set click listener
             binding.chipContainer.setOnClickListener(v -> {
                 Log.d(TAG, "Chip clicked: " + filterChip.getName() +
-                        ", Currently selected: " + filterChip.isSelected());
+                        ", Currently selected: " + filterChip.isSelected() +
+                        ", Allow deselection: " + allowDeselection);
 
-                if (onChipClickListener != null && !filterChip.isSelected()) {
-                    setSelectedPosition(position);
+                if (onChipClickListener != null) {
+                    if (filterChip.isSelected()) {
+                        // Currently selected chip was clicked
+                        if (allowDeselection) {
+                            // Allow deselection - clear all selections
+                            clearSelection();
+                            Log.d(TAG, "Chip deselected: " + filterChip.getName());
+                        } else {
+                            // Don't allow deselection - keep current selection
+                            Log.d(TAG, "Deselection not allowed for: " + filterChip.getName());
+                            return; // Don't notify listener
+                        }
+                    } else {
+                        // Not selected chip was clicked - select it
+                        setSelectedPosition(position);
+                        Log.d(TAG, "Chip selected: " + filterChip.getName());
+                    }
+
+                    // Notify listener
                     onChipClickListener.onChipClick(filterChip, position);
-                } else if (filterChip.isSelected()) {
-                    Log.d(TAG, "Chip already selected, ignoring click");
                 }
             });
         }

@@ -9,7 +9,6 @@ import java.util.TimeZone;
 public class DateUtils {
     private static final String API_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
     private static final String DISPLAY_DATE_FORMAT = "MMM dd, yyyy";
-    private static final String DISPLAY_TIME_FORMAT = "MMM dd, yyyy • HH:mm";
 
     public static String formatDate(String dateString) {
         try {
@@ -18,20 +17,6 @@ public class DateUtils {
             Date date = apiFormat.parse(dateString);
 
             SimpleDateFormat displayFormat = new SimpleDateFormat(DISPLAY_DATE_FORMAT, Locale.getDefault());
-            return displayFormat.format(date);
-        } catch (ParseException e) {
-            e.printStackTrace();
-            return dateString;
-        }
-    }
-
-    public static String formatDateTime(String dateString) {
-        try {
-            SimpleDateFormat apiFormat = new SimpleDateFormat(API_DATE_FORMAT, Locale.getDefault());
-            apiFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-            Date date = apiFormat.parse(dateString);
-
-            SimpleDateFormat displayFormat = new SimpleDateFormat(DISPLAY_TIME_FORMAT, Locale.getDefault());
             return displayFormat.format(date);
         } catch (ParseException e) {
             e.printStackTrace();

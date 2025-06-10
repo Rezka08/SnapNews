@@ -1,7 +1,5 @@
 package com.example.snapnews.activity;
 
-import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -15,7 +13,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -582,12 +579,12 @@ public class DetailActivity extends AppCompatActivity {
 
     private void tryOpenWithSpecificBrowser(String url) {
         String[] browserPackages = {
-                "com.android.chrome",           // Chrome
-                "com.android.browser",          // Default Browser
-                "org.mozilla.firefox",          // Firefox
-                "com.opera.browser",            // Opera
-                "com.UCMobile.intl",           // UC Browser
-                "com.microsoft.emmx"            // Edge
+                "com.android.chrome",
+                "com.android.browser",
+                "org.mozilla.firefox",
+                "com.opera.browser",
+                "com.UCMobile.intl",
+                "com.microsoft.emmx"
         };
 
         for (String packageName : browserPackages) {
@@ -606,7 +603,6 @@ public class DetailActivity extends AppCompatActivity {
             }
         }
 
-        // Jika semua gagal, gunakan WebView internal
         Toast.makeText(this, "Opening article in app", Toast.LENGTH_SHORT).show();
         loadUrlInInternalWebView(url);
     }
@@ -774,13 +770,6 @@ public class DetailActivity extends AppCompatActivity {
         Log.d(TAG, "Showing loading state");
         if (binding != null && binding.progressBar != null) {
             binding.progressBar.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void hideLoading() {
-        Log.d(TAG, "Hiding loading state");
-        if (binding != null && binding.progressBar != null) {
-            binding.progressBar.setVisibility(View.GONE);
         }
     }
 

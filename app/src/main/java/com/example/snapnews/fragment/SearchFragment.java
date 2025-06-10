@@ -1,6 +1,7 @@
 package com.example.snapnews.fragment;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -51,15 +52,17 @@ public class SearchFragment extends Fragment {
     private Handler mainHandler;
     private Handler searchHandler;
     private Runnable searchRunnable;
+
     private String currentQuery = "";
     private FilterChip currentCategory;
+    private int selectedCategoryPosition = -1;
+    private boolean isRestoringState = false;
 
-    // Network call management
     private Call<NewsResponse> currentCall;
 
-    // Auto-refresh state
-    private boolean hasInitialLoad = false;
-    private boolean isAutoRefreshEnabled = true;
+    private static final String KEY_SEARCH_QUERY = "search_query";
+    private static final String KEY_SELECTED_CATEGORY_POSITION = "selected_category_position";
+    private static final String KEY_HAS_RESULTS = "has_results";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -76,8 +79,60 @@ public class SearchFragment extends Fragment {
         setupSearchView();
         setupCategoryFilters();
 
-        // Auto-load popular news on first load
-        autoLoadPopularNews();
+        restoreState(savedInstanceState);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putString(KEY_SEARCH_QUERY, currentQuery);
+        outState.putInt(KEY_SELECTED_CATEGORY_POSITION, selectedCategoryPosition);
+        outState.putBoolean(KEY_HAS_RESULTS, !searchResults.isEmpty());
+
+        Log.d(TAG, "State saved - Query: '" + currentQuery + "', Category position: " + selectedCategoryPosition + ", Has results: " + !searchResults.isEmpty());
+    }
+
+    private void restoreState(Bundle savedInstanceState) {
+        if (savedInstanceState != null) {
+            isRestoringState = true;
+
+            String savedQuery = savedInstanceState.getString(KEY_SEARCH_QUERY, "");
+            int savedCategoryPosition = savedInstanceState.getInt(KEY_SELECTED_CATEGORY_POSITION, -1);
+            boolean hadResults = savedInstanceState.getBoolean(KEY_HAS_RESULTS, false);
+
+            Log.d(TAG, "Restoring state - Query: '" + savedQuery + "', Category position: " + savedCategoryPosition + ", Had results: " + hadResults);
+
+            // Restore search text
+            if (!savedQuery.isEmpty()) {
+                binding.editTextSearch.setText(savedQuery);
+                currentQuery = savedQuery;
+            }
+
+            // Restore category selection
+            if (savedCategoryPosition >= 0 && savedCategoryPosition < categoryFilters.size()) {
+                selectedCategoryPosition = savedCategoryPosition;
+                currentCategory = categoryFilters.get(savedCategoryPosition);
+                categoryChipAdapter.setSelectedPosition(savedCategoryPosition);
+
+                Log.d(TAG, "Restored category: " + currentCategory.getName());
+            }
+
+            // Restore results if had any
+            if (hadResults || !savedQuery.isEmpty() || savedCategoryPosition >= 0) {
+                // Delay execution to ensure UI is ready
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    performSearchOrFilter(currentQuery);
+                    isRestoringState = false;
+                }, 300);
+            } else {
+                showInitialState();
+                isRestoringState = false;
+            }
+        } else {
+            // No saved state - show initial state
+            showInitialState();
+        }
     }
 
     private void initializeComponents() {
@@ -95,12 +150,40 @@ public class SearchFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        // News results RecyclerView
         newsAdapter = new NewsAdapter(searchResults, article -> {
             if (getActivity() != null) {
                 ((com.example.snapnews.activity.MainActivity) getActivity()).navigateToDetail(article);
             }
         });
+
+        newsAdapter.initializeDatabase(dbHelper);
+
+        newsAdapter.setOnItemActionListener(new NewsAdapter.OnItemActionListener() {
+            @Override
+            public void onShareClick(Article article) {
+                shareArticle(article);
+            }
+
+            @Override
+            public void onBookmarkClick(Article article) {
+                // Same as favorite for consistency
+                handleFavoriteChange(article);
+            }
+
+            @Override
+            public void onFavoriteClick(Article article) {
+                handleFavoriteChange(article);
+            }
+
+            @Override
+            public void onFavoriteChanged(Article article) {
+                // Handle favorite change callback
+                handleFavoriteChange(article);
+            }
+        });
+
+        newsAdapter.setCurrentCategory(currentCategory);
+
         binding.recyclerViewSearch.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerViewSearch.setAdapter(newsAdapter);
 
@@ -109,7 +192,7 @@ public class SearchFragment extends Fragment {
                 getContext(), LinearLayoutManager.HORIZONTAL, false);
         binding.recyclerViewCategories.setLayoutManager(categoryLayoutManager);
 
-        Log.d(TAG, "RecyclerViews setup completed");
+        Log.d(TAG, "RecyclerViews setup completed with database and action listeners");
     }
 
     private void setupSearchView() {
@@ -122,6 +205,9 @@ public class SearchFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
+                // Don't trigger search during state restoration
+                if (isRestoringState) return;
+
                 String query = s.toString().trim();
 
                 // Cancel previous search
@@ -132,7 +218,7 @@ public class SearchFragment extends Fragment {
                 // Always perform search/filter, even with empty query
                 searchRunnable = () -> performSearchOrFilter(query);
                 if (searchHandler != null) {
-                    searchHandler.postDelayed(searchRunnable, 300); // Reduced delay for better UX
+                    searchHandler.postDelayed(searchRunnable, 300);
                 }
             }
         });
@@ -146,7 +232,6 @@ public class SearchFragment extends Fragment {
     private void setupCategoryFilters() {
         categoryFilters.clear();
 
-        // Add categories without selecting any
         categoryFilters.add(new FilterChip("All", null, null));
         categoryFilters.add(new FilterChip("Business", "business", null));
         categoryFilters.add(new FilterChip("Technology", "technology", null));
@@ -155,16 +240,16 @@ public class SearchFragment extends Fragment {
         categoryFilters.add(new FilterChip("Entertainment", "entertainment", null));
         categoryFilters.add(new FilterChip("Science", "science", null));
 
-        // Set currentCategory but don't mark it as selected
-        currentCategory = null; // Set to null instead of selecting "All"
+        currentCategory = null;
+        selectedCategoryPosition = -1;
 
         categoryChipAdapter = new FilterChipAdapter(categoryFilters, (filterChip, position) -> {
             Log.d(TAG, "Category filter clicked: " + filterChip.getName());
             onCategoryFilterChanged(filterChip, position);
-        });
+        }, false, true);
 
         binding.recyclerViewCategories.setAdapter(categoryChipAdapter);
-        Log.d(TAG, "Category filters setup completed with " + categoryFilters.size() + " categories");
+        Log.d(TAG, "Category filters setup completed with " + categoryFilters.size() + " categories - NO AUTO-SELECTION");
     }
 
     private void onCategoryFilterChanged(FilterChip filterChip, int position) {
@@ -172,30 +257,36 @@ public class SearchFragment extends Fragment {
         Log.d(TAG, "Old category: " + (currentCategory != null ? currentCategory.getName() : "null"));
         Log.d(TAG, "New category: " + filterChip.getName());
 
+        // Check if this is a deselection (chip was clicked while selected)
+        if (currentCategory != null && currentCategory.getName().equals(filterChip.getName()) &&
+                categoryChipAdapter.getSelectedPosition() == -1) {
+            // Category was deselected
+            currentCategory = null;
+            selectedCategoryPosition = -1;
+            Log.d(TAG, "Category deselected - showing initial state");
+
+            // Update NewsAdapter
+            newsAdapter.setCurrentCategory(null);
+
+            showInitialState();
+            return;
+        }
+
+        // Category was selected
         currentCategory = filterChip;
+        selectedCategoryPosition = position;
+
+        // Update NewsAdapter with current category for badge display
+        newsAdapter.setCurrentCategory(currentCategory);
 
         // Cancel current call
         cancelCurrentCall();
 
         // Auto-refresh with current query or filter-based search
         String query = binding.editTextSearch.getText().toString().trim();
+        currentQuery = query; // Update current query
+
         autoRefreshWithFilters(query, "Category changed to " + filterChip.getName());
-    }
-
-    private void autoLoadPopularNews() {
-        if (!hasInitialLoad && isAutoRefreshEnabled) {
-            Log.d(TAG, "Auto-loading popular news on initial load");
-            hasInitialLoad = true;
-
-            // Don't auto-load if no category is selected
-            if (currentCategory == null) {
-                showInitialState();
-                return;
-            }
-
-            // Load popular/trending news based on current category
-            autoRefreshWithFilters("", "Loading popular news");
-        }
     }
 
     private void autoRefreshWithFilters(String query, String statusMessage) {
@@ -206,7 +297,7 @@ public class SearchFragment extends Fragment {
 
         currentQuery = query;
         Log.d(TAG, "Auto-refreshing with filters - Query: '" + query + "'");
-        Log.d(TAG, "Selected category: " + (currentCategory != null ? currentCategory.getName() : "All"));
+        Log.d(TAG, "Selected category: " + (currentCategory != null ? currentCategory.getName() : "None"));
 
         // Show status message
         if (statusMessage != null && !statusMessage.isEmpty()) {
@@ -235,6 +326,13 @@ public class SearchFragment extends Fragment {
 
         currentQuery = query;
 
+        // Only perform search if there's a query OR a category selected
+        if (query.isEmpty() && currentCategory == null) {
+            Log.d(TAG, "No query and no category selected - showing initial state");
+            showInitialState();
+            return;
+        }
+
         if (query.isEmpty()) {
             // Load filtered news based on current category
             loadFilteredNews();
@@ -251,7 +349,14 @@ public class SearchFragment extends Fragment {
             return;
         }
 
-        Log.d(TAG, "Loading filtered news without search query");
+        // Don't load if no category selected
+        if (currentCategory == null) {
+            Log.d(TAG, "No category selected - showing initial state");
+            showInitialState();
+            return;
+        }
+
+        Log.d(TAG, "Loading filtered news for category: " + currentCategory.getName());
 
         if (isNetworkAvailable()) {
             loadFilteredNewsOnline();
@@ -312,6 +417,9 @@ public class SearchFragment extends Fragment {
                         searchResults.clear();
                         searchResults.addAll(articles);
                         newsAdapter.notifyDataSetChanged();
+
+                        // ADDED: Load favorite statuses after loading articles
+                        loadFavoriteStatusForArticles();
 
                         if (searchResults.isEmpty()) {
                             showEmptyState("No articles found", "Try different category or check back later");
@@ -381,6 +489,10 @@ public class SearchFragment extends Fragment {
                             Log.d(TAG, "Found " + filteredResults.size() + " cached articles with category filter");
                             searchResults.addAll(filteredResults);
                             newsAdapter.notifyDataSetChanged();
+
+                            // ADDED: Load favorite statuses for offline results
+                            refreshAllFavoriteStatuses();
+
                             showResults();
 
                             String message = "📱 Offline: " + filteredResults.size() + " cached articles";
@@ -456,6 +568,9 @@ public class SearchFragment extends Fragment {
                         searchResults.addAll(filteredResults);
                         newsAdapter.notifyDataSetChanged();
 
+                        // ADDED: Load favorite statuses after loading search results
+                        loadFavoriteStatusForArticles();
+
                         if (searchResults.isEmpty()) {
                             showEmptyState("No results found", "Try different keywords or category");
                         } else {
@@ -527,6 +642,10 @@ public class SearchFragment extends Fragment {
                             Log.d(TAG, "Found " + filteredResults.size() + " cached articles with search and category filter");
                             searchResults.addAll(filteredResults);
                             newsAdapter.notifyDataSetChanged();
+
+                            // ADDED: Load favorite statuses for offline search results
+                            refreshAllFavoriteStatuses();
+
                             showResults();
                         } else {
                             Log.d(TAG, "No cached results found with search and category filter");
@@ -655,18 +774,114 @@ public class SearchFragment extends Fragment {
         }
     }
 
+    // ADDED: Handle favorite changes in SearchFragment
+    private void handleFavoriteChange(Article article) {
+        Log.d(TAG, "Favorite changed for article: " + article.getTitle() +
+                " -> " + article.isFavorite());
+
+        // Notify MainActivity about favorite change
+        if (getActivity() != null && getActivity() instanceof com.example.snapnews.activity.MainActivity) {
+            ((com.example.snapnews.activity.MainActivity) getActivity()).onFavoriteChanged(article);
+        }
+    }
+
+    private void shareArticle(Article article) {
+        try {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+
+            String shareText = "";
+            if (article.getTitle() != null) {
+                shareText += article.getTitle() + "\n\n";
+            }
+            if (article.getDescription() != null) {
+                shareText += article.getDescription() + "\n\n";
+            }
+            if (article.getUrl() != null) {
+                shareText += "Read more: " + article.getUrl() + "\n\n";
+            }
+            shareText += "Shared via SnapNews";
+
+            shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+            shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            startActivity(Intent.createChooser(shareIntent, "Share article"));
+            Log.d(TAG, "Share intent started successfully from SearchFragment");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sharing article from SearchFragment: " + e.getMessage(), e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Unable to share article", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void loadFavoriteStatusForArticles() {
+        if (executorService == null || executorService.isShutdown() || !isAdded()) {
+            Log.w(TAG, "Cannot load favorite status - fragment not ready");
+            return;
+        }
+
+        Log.d(TAG, "Loading favorite status for " + searchResults.size() + " articles in SearchFragment");
+
+        executorService.execute(() -> {
+            try {
+                // Load favorite status untuk semua articles dari database
+                int updatedCount = 0;
+                for (Article article : searchResults) {
+                    if (article.getUrl() != null) {
+                        Article existingArticle = articleDao.getArticleByUrl(article.getUrl());
+                        if (existingArticle != null) {
+                            boolean oldStatus = article.isFavorite();
+                            article.setFavorite(existingArticle.isFavorite());
+                            article.setId(existingArticle.getId());
+
+                            if (oldStatus != article.isFavorite()) {
+                                updatedCount++;
+                                Log.d(TAG, "Updated favorite status in SearchFragment for: " + article.getTitle() +
+                                        " -> " + article.isFavorite());
+                            }
+                        }
+                    }
+                }
+
+                // Update UI di main thread
+                if (isAdded() && mainHandler != null) {
+                    final int finalUpdatedCount = updatedCount;
+                    mainHandler.post(() -> {
+                        if (isAdded() && newsAdapter != null) {
+                            newsAdapter.notifyDataSetChanged();
+                            Log.d(TAG, "SearchFragment favorite status loaded - " + finalUpdatedCount + " articles updated");
+                        }
+                    });
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading favorite status in SearchFragment", e);
+            }
+        });
+    }
+
+    private void refreshAllFavoriteStatuses() {
+        if (newsAdapter != null) {
+            Log.d(TAG, "Refreshing all favorite statuses via NewsAdapter in SearchFragment");
+            newsAdapter.refreshFavoriteStatuses();
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
-        // Auto-load popular news if not loaded yet
-        if (!hasInitialLoad) {
-            autoLoadPopularNews();
+        Log.d(TAG, "SearchFragment resumed - Current state: Query='" + currentQuery + "', Category=" +
+                (currentCategory != null ? currentCategory.getName() : "null") + ", Results=" + searchResults.size());
+
+        if (searchResults != null && !searchResults.isEmpty()) {
+            refreshAllFavoriteStatuses();
         }
     }
 
     @Override
     public void onDestroyView() {
-        Log.d(TAG, "onDestroyView called");
+        Log.d(TAG, "onDestroyView called - State will be preserved");
 
         // Cancel any ongoing search calls
         cancelCurrentCall();
@@ -699,6 +914,6 @@ public class SearchFragment extends Fragment {
         }
 
         super.onDestroy();
-        Log.d(TAG, "SearchFragment destroyed - SQLite connections will be closed automatically");
+        Log.d(TAG, "SearchFragment destroyed - State preserved for next creation");
     }
 }

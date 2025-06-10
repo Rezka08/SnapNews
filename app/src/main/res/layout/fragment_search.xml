@@ -40,7 +40,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_no_results"
+                android:src="@drawable/ic_search"
                 android:contentDescription="@string/search" />
 
         </LinearLayout>
@@ -159,7 +159,7 @@
             <ImageView
                 android:layout_width="64dp"
                 android:layout_height="64dp"
-                android:src="@drawable/ic_search"
+                android:src="@drawable/ic_no_results"
                 android:alpha="0.5"
                 android:contentDescription="@string/no_results_icon" />
 

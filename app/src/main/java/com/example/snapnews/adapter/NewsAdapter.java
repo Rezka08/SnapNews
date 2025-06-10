@@ -18,6 +18,7 @@ import com.example.snapnews.database.ArticleDao;
 import com.example.snapnews.database.NewsDatabaseHelper;
 import com.example.snapnews.databinding.ItemNewsBinding;
 import com.example.snapnews.models.Article;
+import com.example.snapnews.models.FilterChip;
 import com.example.snapnews.utils.DateUtils;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -32,6 +33,8 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
     private NewsDatabaseHelper dbHelper;
     private ExecutorService executorService;
     private Handler mainHandler;
+
+    private FilterChip currentCategory;
 
     public interface OnItemClickListener {
         void onItemClick(Article article);
@@ -59,6 +62,13 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
 
     public void setOnItemActionListener(OnItemActionListener listener) {
         this.onItemActionListener = listener;
+    }
+
+    public void setCurrentCategory(FilterChip currentCategory) {
+        this.currentCategory = currentCategory;
+        notifyDataSetChanged(); // Refresh to update category badges
+        android.util.Log.d("NewsAdapter", "Current category updated: " +
+                (currentCategory != null ? currentCategory.getName() : "null"));
     }
 
     @NonNull
@@ -259,8 +269,6 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
                     }
                 });
             }
-
-            // REMOVED: Bookmark button click listener - tidak digunakan lagi
         }
 
         private void saveFavoriteToDatabase(Article article, boolean isFavorite) {
@@ -335,15 +343,49 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         }
 
         private void setCategoryBadge(Article article) {
-            if (binding.textCategory != null) {
-                String category = determineCategoryFromSource(article);
-                if (category != null) {
-                    binding.textCategory.setText(category);
+            if (binding.textCategory != null && binding.categoryContainer != null) {
+                String categoryName = getCurrentCategoryName();
+
+                if (categoryName != null && !categoryName.isEmpty()) {
+                    // Show category badge based on current filter
+                    binding.textCategory.setText(categoryName);
                     binding.categoryContainer.setVisibility(View.VISIBLE);
+
+                    android.util.Log.d("NewsAdapter", "Category badge shown: " + categoryName +
+                            " for article: " + article.getTitle());
                 } else {
-                    binding.categoryContainer.setVisibility(View.GONE);
+                    // No current category - try to determine from source (fallback)
+                    String sourceCategory = determineCategoryFromSource(article);
+
+                    if (sourceCategory != null) {
+                        binding.textCategory.setText(sourceCategory);
+                        binding.categoryContainer.setVisibility(View.VISIBLE);
+
+                        android.util.Log.d("NewsAdapter", "Source-based category badge shown: " + sourceCategory +
+                                " for article: " + article.getTitle());
+                    } else {
+                        // No category to show
+                        binding.categoryContainer.setVisibility(View.GONE);
+
+                        android.util.Log.d("NewsAdapter", "No category badge for article: " + article.getTitle());
+                    }
                 }
             }
+        }
+
+        private String getCurrentCategoryName() {
+            if (currentCategory == null) {
+                return null;
+            }
+
+            String categoryName = currentCategory.getName();
+
+            // Don't show badge for "All" or "Latest" categories
+            if ("All".equals(categoryName) || "Latest".equals(categoryName)) {
+                return null;
+            }
+
+            return categoryName;
         }
 
         private String determineCategoryFromSource(Article article) {
@@ -352,25 +394,39 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
             }
 
             String sourceName = article.getSource().getName().toLowerCase();
+            String title = article.getTitle() != null ? article.getTitle().toLowerCase() : "";
+            String description = article.getDescription() != null ? article.getDescription().toLowerCase() : "";
 
-            if (sourceName.contains("tech") || sourceName.contains("wired") ||
-                    sourceName.contains("verge") || sourceName.contains("ars")) {
+            // Enhanced category detection
+            if (containsKeywords(sourceName, title, description, "tech", "technology", "gadget", "software", "hardware", "ai", "startup")) {
                 return "Technology";
             }
-            if (sourceName.contains("bloomberg") || sourceName.contains("fortune") ||
-                    sourceName.contains("business") || sourceName.contains("financial")) {
+            if (containsKeywords(sourceName, title, description, "business", "finance", "economy", "market", "stock", "economic", "financial")) {
                 return "Business";
             }
-            if (sourceName.contains("espn") || sourceName.contains("sport") ||
-                    sourceName.contains("athletic")) {
+            if (containsKeywords(sourceName, title, description, "sport", "football", "basketball", "soccer", "baseball", "tennis", "olympics")) {
                 return "Sports";
             }
-            if (sourceName.contains("entertainment") || sourceName.contains("variety") ||
-                    sourceName.contains("hollywood")) {
+            if (containsKeywords(sourceName, title, description, "health", "medical", "medicine", "doctor", "disease", "hospital", "wellness")) {
+                return "Health";
+            }
+            if (containsKeywords(sourceName, title, description, "entertainment", "movie", "music", "celebrity", "film", "actor", "actress", "hollywood")) {
                 return "Entertainment";
+            }
+            if (containsKeywords(sourceName, title, description, "science", "research", "study", "scientist", "discovery", "experiment", "laboratory")) {
+                return "Science";
             }
 
             return null;
+        }
+
+        private boolean containsKeywords(String sourceName, String title, String description, String... keywords) {
+            for (String keyword : keywords) {
+                if (sourceName.contains(keyword) || title.contains(keyword) || description.contains(keyword)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void shareArticle(Article article) {

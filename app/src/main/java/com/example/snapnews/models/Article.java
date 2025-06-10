@@ -45,7 +45,7 @@ public class Article {
         this.content = content;
         this.author = author;
         this.source = source;
-        this.timestamp = System.currentTimeMillis(); // Set timestamp saat dibuat
+        this.timestamp = System.currentTimeMillis();
     }
 
     public int getId() { return id; }

@@ -4,10 +4,6 @@ import com.example.snapnews.BuildConfig;
 
 public class ApiKeyManager {
 
-    /**
-     * Get News API Key securely from BuildConfig
-     * @return API key string
-     */
     public static String getNewsApiKey() {
         String apiKey = BuildConfig.NEWS_API_KEY;
 
@@ -22,10 +18,6 @@ public class ApiKeyManager {
         return apiKey;
     }
 
-    /**
-     * Check if API key is configured
-     * @return true if API key exists and not empty
-     */
     public static boolean isApiKeyConfigured() {
         String apiKey = BuildConfig.NEWS_API_KEY;
         return apiKey != null && !apiKey.isEmpty();
